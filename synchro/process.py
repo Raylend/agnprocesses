@@ -23,7 +23,11 @@ def derishev(nu, en, b = 1.0 * u.G):
         raise AttributeError
     omega_0 = 4.0/3.0 * g**2 * const.e.cgs * b / (const.m_e.cgs * const.c.cgs)
     nu_0 = nu / nu_0
-    return (const.alpha / (3.0 * g**2) * derishev_q_function(x))
+    f = const.alpha / (3.0 * g**2) * derishev_q_function(x)
+    if any(f.value[f.value <= 0]):
+        print("Arithmetic exception in derishev(...) function")
+        raise ArithmeticError
+    return f
 
 
 

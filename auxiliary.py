@@ -11,5 +11,13 @@
 # print(x)
 # m = 1.0 * (const.m_e.cgs * (const.c.cgs)**2).to('MeV')
 # print(m)
-x = 2
-print(x.to('eV'))
+from astropy import units as u
+from astropy import constants as const
+import numpy as np
+# import synchro.process
+
+x = np.array([1, 2, 5, 7]) * u.m
+if any(x.value[x.value > 5]):
+    print("Yes!")
+else:
+    print("No!")
