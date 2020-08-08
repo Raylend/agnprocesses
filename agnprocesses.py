@@ -7,12 +7,19 @@ It includes:
 - inverse Compton (IC) process
 - and more
 """
-
+import processes.synchro as synchro
+import processes.spectra as spec
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
-import synchro.process
 
 if __name__ == '__main__':
-    synchro.process.test()
-    print(1.0 * u.G)
+    spec.test()
+    en = np.logspace(3, 7) * u.eV
+    print(en)
+    gamma1 = 2.0
+    gamma2 = 5.0
+    en_break = 1.0 * u.MeV
+    f = spec.broken_power_law(en, gamma1, gamma2, en_break)
+    print('\n')
+    print(f)
