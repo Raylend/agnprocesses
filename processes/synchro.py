@@ -27,6 +27,7 @@ nu, en, b = 1.0 * u.G,
 particle_mass = const.m_e.cgs,
 particle_charge = const.e.gauss
 ):
+    particle_mass = particle_mass.to(u.g, u.mass_energy())
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
     ############################################################################
     if type(en) == type(3.0) or type(en) == type(1) \
