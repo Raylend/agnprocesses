@@ -28,13 +28,15 @@ particle_mass = const.m_e.cgs,
 particle_charge = const.e.gauss
 ):
     particle_mass = particle_mass.to(u.g, u.mass_energy())
+    if b.unit == u.G:
+        b = b.value * u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
     ############################################################################
     if type(en) == type(3.0) or type(en) == type(1) \
      or type(en) == type(np.arange(0,3)):
         g = en
     ############################################################################
-    elif en.unit == 'dimensionless':
+    elif en.unit == 'dimensionless' or en.unit == '':
         g = en
     ############################################################################
     elif en.unit in list_of_energies:
@@ -43,11 +45,12 @@ particle_charge = const.e.gauss
     else:
         raise ValueError("invalid type of the argument 'en'")
     ############################################################################
-    omega_0 = 4.0/3.0 * g**2 * \
-     particle_charge * b.cgs / (particle_mass * const.c.cgs)
-    nu_0 = nu / nu_0
+    omega_0 = (4.0/3.0 * g**2 / (particle_mass * const.c.cgs))
+    omega_0 = omega_0 * particle_charge * b
+    nu_0 = (omega_0 / (2.0 * np.pi)).decompose()
+    x = nu / nu_0
     f = const.alpha / (3.0 * g**2) * derishev_q_function(x)
-    f = (f / const.h * 2.0 * np.pi).to('1/eV * 1/s')
+    f = (f / const.h * 2.0 * np.pi).to(u.eV**(-1) * u.s**(-1))
     if any(f.value[f.value <= 0]):
         raise ArithmeticError("Arithmetic exception in derishev() function")
     return f
