@@ -68,7 +68,7 @@ en_min = None,
 en_max = None,
 en_mono = None,
 en_ref = 1.0,
-number_of_integration = 1000,
+number_of_integration = 100,
 particle_mass = const.m_e.cgs,
 particle_charge = const.e.gauss
 ):
@@ -129,10 +129,11 @@ particle_charge = const.e.gauss
                 derishev(
                 nu, energy, b = b,
                 particle_mass = particle_mass,
-                particle_charge = particle_charge) * broken_power_law(
+                particle_charge = particle_charge) * spec.broken_power_law(
                 energy, gamma1, gamma2, en_break, norm = norm)
                 )
-            f = simps(underintegral, ee)
+            y = np.array(list(map(underintegral, ee)))
+            f = simps(y.value, ee.vale) * y.unit
         else:
             raise ValueError(
             "Make sure you defined all of gamma1, gamma2,\
@@ -151,10 +152,12 @@ particle_charge = const.e.gauss
                 derishev(
                 nu, energy, b = b,
                 particle_mass = particle_mass,
-                particle_charge = particle_charge) * exponential_cutoff(
+                particle_charge = particle_charge) * spec.exponential_cutoff(
                 energy, gamma1, en_cutoff, norm = norm, en_ref = en_ref)
                 )
-            f = simps(underintegral, ee)
+            y = np.array(list(map(underintegral, ee)))
+            f = np.array(list(map(
+            lambda i: simps(y[:,i].value, ee.value), range(0, nu.shape[0]))))
         else:
             raise ValueError(
             "Make sure you defined all of gamma1, en_cutoff,\
