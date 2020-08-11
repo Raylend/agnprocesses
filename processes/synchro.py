@@ -13,7 +13,7 @@ except:
     try:
         import spectra as spec
     except:
-        raise ImportError("Problems with importing spectra.py occured")
+        raise ImportError("a problem with importing spectra.py occured")
 
 def derishev_q_function(x):
     """
@@ -63,7 +63,7 @@ spec_law = 'power_law',
 gamma1 = None,
 gamma2 = None,
 en_break = None,
-en_exp_cutoff = None,
+en_cutoff = None,
 en_min = None,
 en_max = None,
 en_mono = None,
@@ -86,7 +86,7 @@ particle_charge = const.e.gauss
     gamma2 is the second spectral indeex (after break) for the 'broken_power_law'
     en_break is the break energy for the 'broken_power_law'
 
-    en_exp_cutoff is the cutoff energy for the 'exponential_cutoff'
+    en_cutoff is the cutoff energy for the 'exponential_cutoff'
 
     en_min and en_max are minimum and maximum energies for 'power_law',
     'broken_power_law' or 'exponential_cutoff'
@@ -135,8 +135,30 @@ particle_charge = const.e.gauss
             f = simps(underintegral, ee)
         else:
             raise ValueError(
-            "Make sure you defined all of {} correctly".format(
-            [gamma1, gamma2, en_break, en_min, en_max, norm])
+            "Make sure you defined all of gamma1, gamma2,\
+             en_break, en_min, en_max, norm correctly"
+            )
+    ############################################################################
+    elif spec_law == 'exponential_cutoff':
+        if any([gamma1, en_cutoff, en_min, en_max, norm, en_ref]):
+            ee = en_min.unit * np.logspace(
+            np.log10(en_min.value),
+            np.log10(en_max.value),
+            number_of_integration
+            )
+            def underintegral(energy):
+                return(
+                derishev(
+                nu, energy, b = b,
+                particle_mass = particle_mass,
+                particle_charge = particle_charge) * exponential_cutoff(
+                energy, gamma1, en_cutoff, norm = norm, en_ref = en_ref)
+                )
+            f = simps(underintegral, ee)
+        else:
+            raise ValueError(
+            "Make sure you defined all of gamma1, en_cutoff,\
+             en_min, en_max, norm, en_ref correctly"
             )
     ############################################################################
     return f

@@ -17,6 +17,9 @@ def broken_power_law(en, gamma1, gamma2, en_break, norm = 1.0 * u.eV**(-1)):
 
     return f
 
+def exponential_cutoff(en, gamma, en_cutoff,
+norm = 1.0 * u.eV**(-1), en_ref = 1.0 * u.eV):
+    return (norm * (en / en_ref)**(-gamma) * np.exp(-en / en_cutoff))
 
 
 
