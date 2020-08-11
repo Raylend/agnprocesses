@@ -3,3 +3,4 @@ auxiliary.py
 *__pycache__*
 *.log
 trash.py
+test_figures/*
