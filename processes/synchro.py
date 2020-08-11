@@ -15,17 +15,19 @@ except:
     except:
         raise ImportError("a problem with importing spectra.py occured")
 
+
 def derishev_q_function(x):
     """
     This is Derishev's Q_{PL} function
     see his eq. (10) and (41)
     """
-    return (1.0 + x**(-2.0/3.0)) * np.exp(-2.0 * x**(2.0/3.0))
+    return (1.0 + x**(-2.0 / 3.0)) * np.exp(-2.0 * x**(2.0 / 3.0))
+
 
 def derishev(
-nu, en, b = 1.0 * u.G,
-particle_mass = const.m_e.cgs,
-particle_charge = const.e.gauss
+    nu, en, b=1.0 * u.G,
+    particle_mass=const.m_e.cgs,
+    particle_charge=const.e.gauss
 ):
     particle_mass = particle_mass.to(u.g, u.mass_energy())
     if b.unit == u.G:
@@ -33,7 +35,7 @@ particle_charge = const.e.gauss
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
     ############################################################################
     if type(en) == type(3.0) or type(en) == type(1) \
-     or type(en) == type(np.arange(0,3)):
+            or type(en) == type(np.arange(0, 3)):
         g = en
     ############################################################################
     elif en.unit == 'dimensionless' or en.unit == '':
@@ -45,7 +47,7 @@ particle_charge = const.e.gauss
     else:
         raise ValueError("invalid type of the argument 'en'")
     ############################################################################
-    omega_0 = (4.0/3.0 * g**2 / (particle_mass * const.c.cgs))
+    omega_0 = (4.0 / 3.0 * g**2 / (particle_mass * const.c.cgs))
     omega_0 = omega_0 * particle_charge * b
     nu_0 = (omega_0 / (2.0 * np.pi)).decompose()
     x = nu / nu_0
@@ -55,22 +57,23 @@ particle_charge = const.e.gauss
         raise ArithmeticError("Arithmetic exception in derishev() function")
     return f
 
+
 def derishev_synchro_spec(
-nu,
-b = 1.0 * u.G,
-norm = 1.0 * u.eV**(-1),
-spec_law = 'power_law',
-gamma1 = None,
-gamma2 = None,
-en_break = None,
-en_cutoff = None,
-en_min = None,
-en_max = None,
-en_mono = None,
-en_ref = 1.0,
-number_of_integration = 100,
-particle_mass = const.m_e.cgs,
-particle_charge = const.e.gauss
+    nu,
+    b=1.0 * u.G,
+    norm=1.0 * u.eV**(-1),
+    spec_law='power_law',
+    gamma1=None,
+    gamma2=None,
+    en_break=None,
+    en_cutoff=None,
+    en_min=None,
+    en_max=None,
+    en_mono=None,
+    en_ref=1.0,
+    number_of_integration=100,
+    particle_mass=const.m_e.cgs,
+    particle_charge=const.e.gauss
 ):
     """
     nu is the independent variable, frequency
@@ -100,78 +103,78 @@ particle_charge = const.e.gauss
     """
     ############################################################################
     valid_spec_laws = ['power_law', 'broken_power_law',
-    'exponential_cutoff', 'monoenergetic']
+                       'exponential_cutoff', 'monoenergetic']
     if spec_law not in valid_spec_laws:
         raise ValueError("Invalid spec_law. It must be one of {}"
-        .format(valid_spec_laws))
+                         .format(valid_spec_laws))
     f = None
     ############################################################################
     if spec_law == 'monoenergetic':
         if any([norm, en_mono]):
             f = derishev(
-            nu, en_mono, b = b,
-            particle_mass = particle_mass,
-            particle_charge = particle_charge) * norm
+                nu, en_mono, b=b,
+                particle_mass=particle_mass,
+                particle_charge=particle_charge) * norm
         else:
             raise ValueError(
-            "en_mono should be an astropy Quantity, e.g. 5*u.GeV"
+                "en_mono should be an astropy Quantity, e.g. 5*u.GeV"
             )
     ############################################################################
     elif spec_law == 'broken_power_law':
         if any([gamma1, gamma2, en_break, en_min, en_max, norm]):
             ee = en_min.unit * np.logspace(
-            np.log10(en_min.value),
-            np.log10(en_max.value),
-            number_of_integration
+                np.log10(en_min.value),
+                np.log10(en_max.value),
+                number_of_integration
             )
+
             def underintegral(energy):
                 return(
-                derishev(
-                nu, energy, b = b,
-                particle_mass = particle_mass,
-                particle_charge = particle_charge) * spec.broken_power_law(
-                energy, gamma1, gamma2, en_break, norm = norm)
+                    derishev(
+                        nu, energy, b=b,
+                        particle_mass=particle_mass,
+                        particle_charge=particle_charge) * spec.broken_power_law(
+                        energy, gamma1, gamma2, en_break, norm=norm)
                 )
             y = np.array(list(map(underintegral, ee)))
             f = simps(y.value, ee.vale) * y.unit
         else:
             raise ValueError(
-            "Make sure you defined all of gamma1, gamma2,\
+                "Make sure you defined all of gamma1, gamma2,\
              en_break, en_min, en_max, norm correctly"
             )
     ############################################################################
     elif spec_law == 'exponential_cutoff':
         if any([gamma1, en_cutoff, en_min, en_max, norm, en_ref]):
             ee = en_min.unit * np.logspace(
-            np.log10(en_min.value),
-            np.log10(en_max.value),
-            number_of_integration
+                np.log10(en_min.value),
+                np.log10(en_max.value),
+                number_of_integration
             )
+
             def underintegral(energy):
                 return(
-                derishev(
-                nu, energy, b = b,
-                particle_mass = particle_mass,
-                particle_charge = particle_charge) * spec.exponential_cutoff(
-                energy, gamma1, en_cutoff, norm = norm, en_ref = en_ref)
+                    derishev(
+                        nu, energy, b=b,
+                        particle_mass=particle_mass,
+                        particle_charge=particle_charge) * spec.exponential_cutoff(
+                        energy, gamma1, en_cutoff, norm=norm, en_ref=en_ref)
                 )
             y = np.array(list(map(underintegral, ee)))
             f = np.array(list(map(
-            lambda i: simps(y[:,i].value, ee.value), range(0, nu.shape[0]))))
+                lambda i: simps(y[:, i].value, ee.value), range(0, nu.shape[0]))))
         else:
             raise ValueError(
-            "Make sure you defined all of gamma1, en_cutoff,\
+                "Make sure you defined all of gamma1, en_cutoff,\
              en_min, en_max, norm, en_ref correctly"
             )
     ############################################################################
     return f
 
+
 def test():
     print("synchro.py imported successfully.")
     return None
-
-
-
 
 
 if __name__ == '__main__':
