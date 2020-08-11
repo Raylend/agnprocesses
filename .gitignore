@@ -1,4 +1,4 @@
-nohup.out
+*.out
 auxiliary.py
 *__pycache__*
 *.log
