@@ -61,7 +61,7 @@ def derishev(
 def derishev_synchro_spec(
     nu,
     b=1.0 * u.G,
-    norm=1.0 * u.eV**(-1),
+    norm=1.0,
     spec_law='power_law',
     gamma1=None,
     gamma2=None,
@@ -137,7 +137,9 @@ def derishev_synchro_spec(
                         energy, gamma1, gamma2, en_break, norm=norm)
                 )
             y = np.array(list(map(underintegral, ee)))
-            f = simps(y.value, ee.vale) * y.unit
+            f = np.array(list(map(
+                lambda i: simps(y[:, i], ee.value), range(0, nu.shape[0])))) \
+                * underintegral(ee[0]).unit * ee[0].unit
         else:
             raise ValueError(
                 "Make sure you defined all of gamma1, gamma2,\
@@ -162,7 +164,8 @@ def derishev_synchro_spec(
                 )
             y = np.array(list(map(underintegral, ee)))
             f = np.array(list(map(
-                lambda i: simps(y[:, i].value, ee.value), range(0, nu.shape[0]))))
+                lambda i: simps(y[:, i], ee.value), range(0, nu.shape[0])))) \
+                * underintegral(ee[0]).unit * ee[0].unit
         else:
             raise ValueError(
                 "Make sure you defined all of gamma1, en_cutoff,\
