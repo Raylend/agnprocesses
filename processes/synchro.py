@@ -110,7 +110,7 @@ def derishev_synchro_spec(
     f = None
     ############################################################################
     if spec_law == 'monoenergetic':
-        if any([norm, en_mono]):
+        if all([norm, en_mono]):
             f = derishev(
                 nu, en_mono, b=b,
                 particle_mass=particle_mass,
@@ -121,7 +121,7 @@ def derishev_synchro_spec(
             )
     ############################################################################
     elif spec_law == 'broken_power_law':
-        if any([gamma1, gamma2, en_break, en_min, en_max, norm]):
+        if all([gamma1, gamma2, en_break, en_min, en_max, norm]):
             ee = en_min.unit * np.logspace(
                 np.log10(en_min.value),
                 np.log10(en_max.value),
@@ -147,7 +147,7 @@ def derishev_synchro_spec(
             )
     ############################################################################
     elif spec_law == 'exponential_cutoff':
-        if any([gamma1, en_cutoff, en_min, en_max, norm, en_ref]):
+        if all([gamma1, en_cutoff, en_min, en_max, norm, en_ref]):
             ee = en_min.unit * np.logspace(
                 np.log10(en_min.value),
                 np.log10(en_max.value),
