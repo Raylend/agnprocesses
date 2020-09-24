@@ -265,11 +265,48 @@ def inverse_compton_spec(
                 )
             )
             ) * underintegral(ee[0]).unit * ee[0].unit
-            f = f.decompose(['eV', 's', 'cm'])
+            # f = f.decompose(['eV', 's', 'cm'])
         else:
             raise ValueError(
                 "Make sure you defined all of gamma1, gamma2,\
              en_break, en_min, en_max, norm correctly"
+            )
+    ###########################################################################
+    elif spec_law == 'exponential_cutoff':
+        par_list = [gamma1, en_cutoff, en_min, en_max, norm, en_ref]
+        if all(el is not None for el in par_list):
+            ee = en_min.unit * np.logspace(
+                np.log10(en_min.value),
+                np.log10(en_max.value),
+                number_of_integration
+            )
+
+            def underintegral(energy):
+                return(
+                    inverse_compton_over_photon_field(alpha,
+                                                      energy,
+                                                      field,
+                                                      particle_mass=particle_mass,
+                                                      particle_charge=particle_charge,
+                                                      background_photon_energy_unit=background_photon_energy_unit,
+                                                      background_photon_density_unit=background_photon_density_unit) *
+                    spec.exponential_cutoff(
+                        energy, gamma1, en_cutoff, norm=norm, en_ref=en_ref
+                    )
+                )
+            y = np.array(list(map(underintegral, ee)))
+            f = np.array(list(
+                map(
+                    lambda i: simps(y[:, i], ee.value),
+                    range(0, alpha.shape[0])
+                )
+            )
+            ) * underintegral(ee[0]).unit * ee[0].unit
+            # f = f.decompose(['eV', 's', 'cm'])
+        else:
+            raise ValueError(
+                "Make sure you defined all of gamma1, en_cutoff, en_min, \
+                en_max, norm, en_ref correctly"
             )
     ###########################################################################
     return f
@@ -277,77 +314,72 @@ def inverse_compton_spec(
 
 if __name__ == '__main__':
     spec.test()
-    eps = np.array([1.0e-06])
+    eps = np.logspace(-3, 1, 100) * u.eV
     eps = eps.reshape(eps.shape[0], 1)
-    dens = eps**(0)
-    field = np.concatenate((eps, dens), axis=1)
-    alpha = np.logspace(-8, -3, 100)
-    en_mono = 18.0
-    tt = inverse_compton_spec(
+    T = 1.0 * u.eV
+    dens = spec.greybody_spectrum(eps,
+                                  T,
+                                  dilution=1.0)
+    field = np.concatenate((eps.value, dens.value), axis=1)
+    ###########################################################################
+    gamma = 2.0
+    en_ref = 1.0 * u.eV
+    en_cutoff = 2.0e+10 * u.eV
+    alpha = np.logspace(0, 10.8, 100) * u.eV
+    en_min = 5.0e+06 * u.eV
+    en_max = 5.0e+15 * u.eV
+    s = inverse_compton_spec(
         alpha,
         field,
-        norm=1.0,
-        spec_law='monoenergetic',
-        en_mono=en_mono,
-        background_photon_energy_unit=u.dimensionless_unscaled,
-        background_photon_density_unit=u.m**(-3))
-    jones = np.loadtxt(
-        '/home/raylend/Science/agnprocesses/test_figures/IC_Jones/IC_Jones_gamma=18_better.txt')
-    jones[:, 1] = jones[:, 1] / np.max(jones[:, 1])
-    tt = tt / np.max(tt)
+        norm=1.0 * u.eV**(-1),
+        spec_law='exponential_cutoff',
+        gamma1=gamma,
+        en_cutoff=en_cutoff,
+        en_min=en_min,
+        en_max=en_max,
+        en_ref=en_ref,
+        number_of_integration=100,
+        particle_mass=const.m_e.cgs,
+        particle_charge=const.e.gauss,
+        background_photon_energy_unit=u.eV,
+        background_photon_density_unit=(u.eV * u.cm**3)**(-1)
+    )
+    s = s * alpha**2
+    s = s / np.max(s)
+    scilab = np.loadtxt(
+        '/home/raylend/Science/agnprocesses/test_figures/IC_Khangulian_scilab/IC_Khangulian_scilab.txt')
     ############################################################################
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(1, 1, 1)
 
     plt.plot(
-        alpha, tt,
+        alpha, s,
         marker=None,
         linewidth=3,
         # color = 'g',
-        label='Egor'
+        label='Egor python, Jones (1968)'
     )
     plt.plot(
-        jones[:, 0], jones[:, 1],
+        scilab[:, 0], scilab[:, 1],
         marker=None,
         linewidth=3,
         linestyle='--',
         # color = 'b',
-        label='Jones'
+        label='Egor scilab, Khangulian (2014)'
     )
-
+    plt.xlabel('photon energy, ' + str(alpha.unit), fontsize=18)
+    plt.xticks(fontsize=12)
+    plt.ylabel('SED, arb.units', fontsize=18)
+    plt.yticks(fontsize=12)
     plt.xscale("log")
     plt.yscale("log")
-    #ax.set_xlim(1.0e+04, 1.0e+05)
-    #ax.set_ylim(1.0e-09, 1.0e-07)
+    # ax.set_xlim(1.0e+04, 1.0e+05)
+    # ax.set_ylim(1.0e-09, 1.0e-07)
     # ax.grid()
     # ax.grid()
-    plt.legend(loc='upper right')
+    plt.legend(loc='lower right')
     # fig.savefig(
     #     'test_figures/exponential_cutoff_compare_with_Derishev_fig4a.pdf'
     # )
 
     plt.show()
-
-    # tt = inverse_compton_spec(
-    #     alpha,
-    #     field,
-    #     norm=1.0 * (u.eV)**(-1),
-    #     spec_law='broken_power_law',
-    #     gamma1=1.9,
-    #     gamma2=4.5,
-    #     en_break=9 * u.GeV,
-    #     en_min=5 * u.MeV,
-    #     en_max=100 * u.GeV,
-    #     number_of_integration=100,
-    #     particle_mass=const.m_e.cgs,
-    #     particle_charge=const.e.gauss,
-    #     background_photon_energy_unit=u.eV,
-    #     background_photon_density_unit=(u.eV * u.cm**3)**(-1)
-    # )
-    # tt = inverse_compton_spec(
-    #     alpha,
-    #     field,
-    #     norm=1.0,
-    #     spec_law='monoenergetic',
-    #     en_mono=10.0 * u.GeV)
-    # print(tt)
