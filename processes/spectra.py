@@ -7,6 +7,13 @@ from astropy import constants as const
 import numpy as np
 
 
+def power_law(en,
+              gamma,
+              norm=1.0 * u.eV**(-1),
+              en_ref=1.0 * u.eV):
+    return (norm * (en / en_ref)**(-gamma))
+
+
 def broken_power_law(en, gamma1, gamma2, en_break, norm=1.0 * u.eV**(-1)):
 
     en1 = en[en <= en_break]
