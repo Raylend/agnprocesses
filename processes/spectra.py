@@ -40,6 +40,12 @@ def greybody_spectrum(en,
     """
     returns greybody (blackbody for dilution = 1.0) spectrum in
     1 / (eV cm^3) units
+
+    en is energy or frequency of photons with 'J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV' or 'Hz' units (float or array-like)
+
+    temperature is astropy Quantity with 'K', 'deg_C' or 'J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV' unit
+
+    dilution is float (dimensionless)
     """
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
     ###########################################################################
