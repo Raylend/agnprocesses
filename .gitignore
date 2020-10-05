@@ -6,5 +6,7 @@ trash.py
 test_figures/*
 *data/*
 processes/c_codes/PhotoHadron/Data/*
-*c_codes/PhotoHadron/input*
-*c_codes/PhotoHadron/output*
+*c_codes/PhotoHadron/input/*
+*c_codes/PhotoHadron/output/*
+processes/c_codes/PhotoHadron/Active
+processes/c_codes/PhotoHadron/Neutrino
