@@ -4,3 +4,7 @@ auxiliary.py
 *.log
 trash.py
 test_figures/*
+*data/*
+*Data/*
+*input/*
+*output/*
