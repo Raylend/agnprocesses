@@ -5,6 +5,6 @@ auxiliary.py
 trash.py
 test_figures/*
 *data/*
-*c_codes/PhotoHadron/Data*
+processes/c_codes/PhotoHadron/Data/*
 *c_codes/PhotoHadron/input*
 *c_codes/PhotoHadron/output*
