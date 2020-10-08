@@ -52,7 +52,12 @@ int B01PhotoHadronE::Test()
     //fp= fopen("PhotoHadron-Electron-3.0","w");
     //fp= fopen("PhotoHadron-Electron-5.0","w");
     //fp= fopen("PhotoHadron-Electron-10","w");
-    fp= fopen("PhotoHadron-Electron-30","w");
+    fp= fopen("processes/c_codes/PhotoHadron/Data/PhotoHadron-Electron-30","w");
+    if (fp == NULL)
+    {
+        printf("Couldn't create or read the file!\n");
+        exit(1);
+    }
     //fp= fopen("PhotoHadron-Electron-100","w");
     for (i=0; i<10000; i++)
     {
@@ -84,7 +89,12 @@ int B01PhotoHadronE::ReadTable()
     int i;
     double rd;
     FILE *fp;
-    fp= fopen("Data/Electron","r");
+    fp= fopen("processes/c_codes/PhotoHadron/Data/Electron","r");
+    if (fp == NULL)
+    {
+        printf("Couldn't create or read the file!\n");
+        exit(1);
+    }
     fscanf(fp,"%d",&ne);
     for (i=0; i<ne; i++)
     {

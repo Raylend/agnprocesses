@@ -35,8 +35,18 @@ int B01PlanckianCMB::Process()
     //Ep= 1.0e21/1.0e9;				//[eV]->[GeV]
     deps= 1.0e-5;				//[eV]
     //
-    fpa= fopen("Active","w");
-    fpn= fopen("Neutrino","w");
+    fpa= fopen("processes/c_codes/PhotoHadron/Data/Active","w");
+    if (fpa == NULL)
+    {
+        printf("Couldn't create or read the file!\n");
+        exit(1);
+    }
+    fpn= fopen("processes/c_codes/PhotoHadron/Data/Neutrino","w");
+    if (fpn == NULL)
+    {
+        printf("Couldn't create or read the file!\n");
+        exit(1);
+    }
     fprintf(fpa,"%13.6e\n",T);
     fprintf(fpn,"%13.6e\n",T);
     Integrate(T,Ep,deps);

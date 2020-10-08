@@ -11,3 +11,5 @@ processes/c_codes/PhotoHadron/output/*
 processes/c_codes/PhotoHadron/Active
 processes/c_codes/PhotoHadron/Neutrino
 *.pyc
+*.o
+*.so

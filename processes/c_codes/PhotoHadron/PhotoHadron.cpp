@@ -9,28 +9,34 @@
 #include "src/B01PlanckianCMB.cpp"
 #include "src/B01Planckian.cpp"
 #include "src/B01SSC.cpp"
+#include <stdio.h>
 
-//B01PhotoHadronG phg;
-//B01PhotoHadronP php;
-//B01PhotoHadronE phe;
-//B01PhotoHadronAntiNuMu phanm;
-//B01PhotoHadronAntiNuE phane;
-//B01PhotoHadronNuMu phnm;
-//B01PhotoHadronNuE phne;
-// B01PlanckianCMB pl;//cmb;
-//B01Planckian pl;
-B01SSC pl;
+// B01PhotoHadronG phg;
+// B01PhotoHadronP php;
+// B01PhotoHadronE phe;
+// B01PhotoHadronAntiNuMu phanm;
+// B01PhotoHadronAntiNuE phane;
+// B01PhotoHadronNuMu phnm;
+// B01PhotoHadronNuE phne;
+// B01PlanckianCMB plcmb;
+// B01Planckian pl;
+B01SSC p;
+
+void photohadron(void)
+{
+    // phg.Test();	    //gamma
+    // php.Test();	    //positron
+    // phe.Test();		//electron
+    // phanm.Test();	//anti-nu_mu
+    // phane.Test();	//anti-nu_e
+    // phnm.Test();	//nu_mu
+    // phne.Test();	//nu_e
+    printf("%le\n", mp);
+    p.Process();
+}
 
 int main()
 {
-    //    phg.Test();					//gamma
-    //    php.Test();					//positron
-    //    phe.Test();					//electron
-    //    phanm.Test();				//anti-nu_mu
-    //    phane.Test();				//anti-nu_e
-    //    phnm.Test();				//nu_mu
-    //    phne.Test();				//nu_e
-    ////    plcmb.Process();
-    pl.Process();
-    return(0);
+    photohadron();
+    return 0;
 }

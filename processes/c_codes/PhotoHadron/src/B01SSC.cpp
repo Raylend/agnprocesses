@@ -23,11 +23,11 @@ class B01SSC
     const double E_ref = 1.0; // eV
     // const double E_cut = PROTON_REST_ENERGY * (PROTON_REST_ENERGY / (4.0 * 2.326680e-04)) * 0.313 * 0.1;
     // const double E_cut = 0.1 * 3.0e+20; // eV
+    double E_cut;
     double energy_proton_min;
     double energy_proton_max;
     double a_p;
     double p_p;
-    double C_p;
     // double E1, E2;
     //
     const double a_frac = log10(1.0/MINIMAL_FRACTION) / (double) SIZE_X;
@@ -77,16 +77,18 @@ class B01SSC
 void B01SSC::read_protons_parameters()
 {
     FILE * fp;
-    fp = fopen("proton_parameters.txt", "r");
+    fp = fopen("processes/c_codes/PhotoHadron/input/proton_parameters.txt", "r");
     if (fp == NULL)
     {
         printf("Cannot open 'proton_parameters.txt'\n");
         exit(1);
     }
-        fscanf(fp, "%lf", &energy_proton_min);
-        fscanf(fp, "%lf", &energy_proton_max);
+    while(!feof(fp))
+    {
+        fscanf(fp, "%le", &energy_proton_min);
+        fscanf(fp, "%le", &energy_proton_max);
         fscanf(fp, "%lf", &p_p);
-
+        fscanf(fp, "%le", &E_cut);
     }
     fclose(fp);
 }
@@ -170,8 +172,7 @@ B01SSC::B01SSC()
     // {
     //     C_p = 1.0/(pow(E_ref, p_p)*log(energy_proton_max/energy_proton_min));
     // }
-    C_p = 1.0;
-    printf("C_p = %le [1/eV]\n", C_p);
+    // printf("C_p = %le [1/eV]\n", C_p);
     //
     B01SSC::PrepareSSC();
 }
@@ -182,14 +183,10 @@ B01SSC::~B01SSC()
 void B01SSC::PrepareSSC()
 {
     FILE * fd;
-    // fd = fopen("Data/nph_synchro_v35_1000.txt", "r");
-    // fd = fopen("Data/planck_spectrum.txt", "r");
-    // fd = fopen("Data/Reimer_photon_field_1000.txt", "r");
-    // fd = fopen("Data/spectrum_vAPR47.txt", "r");
-    fd = fopen("Data/plank_CMB_for_Kelner.txt", "r");
+    fd = fopen("processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt", "r");
     if (fd == NULL)
     {
-        printf("Cannot open the file Data/...\n");
+        printf("Cannot open the file input/...\n");
         exit(1);
     }
     for (int i = 0; i < SIZE_N_PHOTONS_SYNCHRO; i++)
@@ -424,10 +421,11 @@ void B01SSC::FinalSED()
             max = SED_neutrino_final[l];
         }
     }
-    fp = fopen("output/neutrino_spectrum_compare_with_Kelner_exp.txt", "w");
+    fp = fopen("processes/c_codes/PhotoHadron/output/neutrino_spectrum.txt", "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
+        exit(1);
     }
     for (int l = 0; l < SIZE_ENERGY_NEUTRINO; l++)
     {
@@ -458,7 +456,12 @@ void B01SSC::FinalSED()
             max = SED_electron_final[l];
         }
     }
-    fp = fopen("output/electron_spectrum_compare_with_Kelner_exp.txt", "w");
+    fp = fopen("processes/c_codes/PhotoHadron/output/electron_spectrum.txt", "w");
+    if (fp == NULL)
+    {
+        printf("Cannot create the file!\n");
+        exit(1);
+    }
     for (int l = 0; l < SIZE_ENERGY_ELECTRON; l++)
     {
         if (SED_electron_final[l] >= 1.0e-04*max)
@@ -484,7 +487,12 @@ void B01SSC::FinalSED()
             max = SED_gamma_final[l];
         }
     }
-    fp = fopen("output/gamma_spectrum_compare_with_Kelner_exp.txt", "w");
+    fp = fopen("processes/c_codes/PhotoHadron/output/gamma_spectrum.txt", "w");
+    if (fp == NULL)
+    {
+        printf("Cannot create the file!\n");
+        exit(1);
+    }
     for (int l = 0; l < SIZE_ENERGY_GAMMA; l++)
     {
         if (SED_gamma_final[l] >= 1.0e-04*max)
@@ -497,6 +505,12 @@ void B01SSC::FinalSED()
 
 double B01SSC::proton_spectrum(double E_p_eV, double p_p)
 {
-    // return C_p*pow(E_p_eV/E_ref, -p_p);
-    return (C_p*pow(E_p_eV/E_ref, -p_p) * exp(-E_p_eV / E_cut));
+    if (E_cut < 0)
+    {
+        return pow(E_p_eV/E_ref, -p_p);
+    }
+    else
+    {
+        return (pow(E_p_eV/E_ref, -p_p) * exp(-E_p_eV / E_cut));
+    }
 }
