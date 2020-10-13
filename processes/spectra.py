@@ -49,13 +49,13 @@ def greybody_spectrum(en,
     """
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
     ###########################################################################
+    tu = str(temperature.unit)
     try:
-        tu = temperature.unit
         if tu == 'K':
             e_char = (const.k_B * temperature).to('J')
-        if tu == 'deg_C':
+        elif tu == 'deg_C':
             e_char = (const.k_B * (temperature.value - 273.15) * u.K).to('J')
-        if tu in list_of_energies:
+        elif tu in list_of_energies:
             e_char = temperature.to('J')
         else:
             raise ValueError("Invalid value of temperature. \n It must be K, deg_C or one of {}".format(
@@ -68,10 +68,10 @@ def greybody_spectrum(en,
     ###########################################################################
     nu_char = e_char / const.h
     try:
-        if en.unit in list_of_energies:
+        if str(en.unit) in list_of_energies:
             energy = en.to('eV')
             nu = en.to('J') / const.h
-        elif en.unit == 'Hz':
+        elif str(en.unit) == 'Hz':
             nu = en
             energy = (const.h * nu).to('eV')
         else:
@@ -82,7 +82,7 @@ def greybody_spectrum(en,
                          format(list_of_energies))
     ###########################################################################
     x = (nu / nu_char).decompose()
-    s = (8 * np.pi**2 * const.h * nu**3) / const.c**3 / (np.exp(x) - 1)
+    s = (8 * np.pi * const.h * nu**3) / const.c**3 / (np.exp(x) - 1)
     s /= const.h  # cm^{-3}
     s /= energy  # [1 / (cm^3 eV)]
     s *= dilution
