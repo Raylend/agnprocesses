@@ -4,11 +4,11 @@
 #define SIZE_ENERGY_NEUTRINO 5000
 #define SIZE_ENERGY_ELECTRON 5000 // 50000
 #define SIZE_ENERGY_GAMMA 5000
-#define N_PROTON 100
+#define N_PROTON 50
 #define NEUTRINO_OSCILLATION_FACTOR 0.33333333
 #define MINIMAL_FRACTION 1.0e-04
 // #define KELNER_KOEFFICIENT 3.229068e-13
-#define KELNER_KOEFFICIENT  0.394671032 // 0.2099314 * 1.88
+#define KELNER_KOEFFICIENT  0.2099314 * 1.77
 #define PROTON_REST_ENERGY 9.38272e+08 // eV
 
 class B01SSC
@@ -23,11 +23,9 @@ class B01SSC
     const double E_ref = 1.0; // eV
     // const double E_cut = PROTON_REST_ENERGY * (PROTON_REST_ENERGY / (4.0 * 2.326680e-04)) * 0.313 * 0.1;
     // const double E_cut = 0.1 * 3.0e+20; // eV
-    double E_cut;
-    double energy_proton_min;
-    double energy_proton_max;
+    double energy_proton_min, energy_proton_max;
+    double p_p, E_cut;
     double a_p;
-    double p_p;
     // double E1, E2;
     //
     const double a_frac = log10(1.0/MINIMAL_FRACTION) / (double) SIZE_X;
@@ -48,10 +46,10 @@ class B01SSC
     double energy_proton[N_PROTON];
     //
     //
-    void PrepareSSC();
-    int Process();
+    void PrepareSSC(char *);
+    int Process(char* file_path, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext);
     int Integrate(int proton_energy_number);
-    void read_protons_parameters();
+    // void read_protons_parameters();
     double proton_spectrum(double E_p_eV, double p_p);
     void PrepareSEDIntermediate();
     void FinalSED();
@@ -74,32 +72,109 @@ class B01SSC
 //     return (pow(E_p_eV/E_ref, -p_p) * exp(-E_p_eV / E_cut));
 // }
 
-void B01SSC::read_protons_parameters()
-{
-    FILE * fp;
-    fp = fopen("processes/c_codes/PhotoHadron/input/proton_parameters.txt", "r");
-    if (fp == NULL)
-    {
-        printf("Cannot open 'proton_parameters.txt'\n");
-        exit(1);
-    }
-    while(!feof(fp))
-    {
-        fscanf(fp, "%le", &energy_proton_min);
-        fscanf(fp, "%le", &energy_proton_max);
-        fscanf(fp, "%lf", &p_p);
-        fscanf(fp, "%le", &E_cut);
-    }
-    fclose(fp);
-}
+// void B01SSC::read_protons_parameters()
+// {
+//     FILE * fp;
+//     fp = fopen("processes/c_codes/PhotoHadron/input/proton_parameters.txt", "r");
+//     if (fp == NULL)
+//     {
+//         printf("Cannot open 'proton_parameters.txt'\n");
+//         exit(1);
+//     }
+//     while(!feof(fp))
+//     {
+//         fscanf(fp, "%le", &energy_proton_min);
+//         fscanf(fp, "%le", &energy_proton_max);
+//         fscanf(fp, "%lf", &p_p);
+//         fscanf(fp, "%le", &E_cut);
+//     }
+//     fclose(fp);
+// }
 
 B01SSC::B01SSC()
 {
-    B01SSC::read_protons_parameters();
+    // double sum = 0.0;
+    // double delta = 0.0;
+    // double t1 = 0;
+    // double t2 = 0;
+    // for (int d= 0; d < N_PROTON - 1; d++)
+    // {
+    //     t1 = B01SSC::raw_proton_spectrum(energy_proton[d], p_p) * energy_proton[d];
+    //     t2 = B01SSC::raw_proton_spectrum(energy_proton[d+1], p_p) * energy_proton[d+1];
+    //     delta = (t1 + t2)/2.0 * (energy_proton[d+1] - energy_proton[d]);
+    //     sum = sum + delta;
+    // }
+    // printf("delta / sum = %le\n", delta / sum);
+    // printf("E_cut = %le eV\n", E_cut);
+    // C_p = 1.0 / 1.602e-12 / sum; // see Kelner2008 eq. (73)
+    //
+    //
+    // // perform normalization of the proton spectrum
+    // E2 = pow(energy_proton_min, -p_p + 1.0);
+    // E1 = pow(energy_proton_max, -p_p + 1.0);
+    // // normalization on one particle
+    // if (p_p != 1.0)
+    // {
+    //     C_p = (p_p - 1)/(pow(E_ref, p_p)*(E2 - E1));
+    // }
+    // else
+    // {
+    //     C_p = 1.0/(pow(E_ref, p_p)*log(energy_proton_max/energy_proton_min));
+    // }
+    // printf("C_p = %le [1/eV]\n", C_p);
+    //
+}
+
+B01SSC::~B01SSC()
+{}
+
+void B01SSC::PrepareSSC(char * file_path)
+{
+    FILE * fd;
+    FILE * fp;
+    fp = fopen("processes/c_codes/PhotoHadron/output/log", "a");
+    if (fp == NULL)
+    {
+        printf("Cannot create log!\n");
+    }
+    else
+    {
+        fprintf(fp, "Reding the following photon field:");
+        fputs(file_path, fp);
+    }
+    fclose(fp);
+    // fd = fopen("processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt", "r");
+    fd = fopen(file_path, "r");
+    if (fd == NULL)
+    {
+        printf("Cannot open the file with photon field!\n");
+        exit(1);
+    }
+    else
+    {
+        printf("The photon field file has been read successfully.\n");
+    }
+    for (int i = 0; i < SIZE_N_PHOTONS_SYNCHRO; i++)
+    {
+        fscanf(fd, "%le %le", &epsilon_synchro[i], &nph_synchro[i]);
+    }
+    fclose(fd);
+}
+
+int B01SSC::Process(char* file_path, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext)
+{
+    energy_proton_min = energy_proton_min_ext;
+    energy_proton_max = energy_proton_max_ext;
+    p_p = p_p_ext;
+    E_cut = E_cut_ext;
+    B01SSC::PrepareSSC(file_path);
+    //
+    //
     const double a_p = log10(energy_proton_max / energy_proton_min) / (double)N_PROTON;
     //
     //
     const double energy_neutrino_min = energy_proton_min; //eV
+    printf("energy_neutrino_min = %le\n", energy_neutrino_min);
     const double energy_neutrino_max = energy_proton_max; // eV
     const double a_neu = log10(energy_neutrino_max/energy_neutrino_min)/(double)SIZE_ENERGY_NEUTRINO;
     //
@@ -110,8 +185,6 @@ B01SSC::B01SSC()
     const double energy_gamma_min = energy_proton_min; // eV
     const double energy_gamma_max = energy_proton_max; // eV
     const double a_g = log10(energy_gamma_max/energy_gamma_min)/(double)SIZE_ENERGY_GAMMA;
-    //
-    //
     // neutrinos
     for (int k = 0; k < SIZE_ENERGY_NEUTRINO; k++)
     {
@@ -144,63 +217,7 @@ B01SSC::B01SSC()
     {
         energy_proton[d] = energy_proton_min*pow(10.0, a_p*d);
     }
-    // double sum = 0.0;
-    // double delta = 0.0;
-    // double t1 = 0;
-    // double t2 = 0;
-    // for (int d= 0; d < N_PROTON - 1; d++)
-    // {
-    //     t1 = B01SSC::raw_proton_spectrum(energy_proton[d], p_p) * energy_proton[d];
-    //     t2 = B01SSC::raw_proton_spectrum(energy_proton[d+1], p_p) * energy_proton[d+1];
-    //     delta = (t1 + t2)/2.0 * (energy_proton[d+1] - energy_proton[d]);
-    //     sum = sum + delta;
-    // }
-    // printf("delta / sum = %le\n", delta / sum);
-    // printf("E_cut = %le eV\n", E_cut);
-    // C_p = 1.0 / 1.602e-12 / sum; // see Kelner2008 eq. (73)
     //
-    //
-    // // perform normalization of the proton spectrum
-    // E2 = pow(energy_proton_min, -p_p + 1.0);
-    // E1 = pow(energy_proton_max, -p_p + 1.0);
-    // // normalization on one particle
-    // if (p_p != 1.0)
-    // {
-    //     C_p = (p_p - 1)/(pow(E_ref, p_p)*(E2 - E1));
-    // }
-    // else
-    // {
-    //     C_p = 1.0/(pow(E_ref, p_p)*log(energy_proton_max/energy_proton_min));
-    // }
-    // printf("C_p = %le [1/eV]\n", C_p);
-    //
-    B01SSC::PrepareSSC();
-}
-
-B01SSC::~B01SSC()
-{}
-
-void B01SSC::PrepareSSC()
-{
-    FILE * fd;
-    fd = fopen("processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt", "r");
-    if (fd == NULL)
-    {
-        printf("Cannot open the file input/...\n");
-        exit(1);
-    }
-    for (int i = 0; i < SIZE_N_PHOTONS_SYNCHRO; i++)
-    {
-        fscanf(fd, "%le %le", &epsilon_synchro[i], &nph_synchro[i]);
-    }
-    fclose(fd);
-}
-
-int B01SSC::Process()
-{
-    //
-    // fpa= fopen("Active","w");
-    // fpn= fopen("Neutrino","w");
     for (int i = 0; i < N_PROTON; i++)
     {
         B01SSC::Integrate(i);
@@ -208,6 +225,9 @@ int B01SSC::Process()
     }
     PrepareSEDIntermediate();
     FinalSED();
+    //
+    //
+    //
     // for (int i = 0; i < 1; i++)
     // {
     //     B01SSC::Integrate(i);

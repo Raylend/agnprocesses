@@ -22,21 +22,21 @@
 // B01Planckian pl;
 B01SSC p;
 
-void photohadron(void)
+void photohadron(char* file_path, double energy_proton_min, double energy_proton_max, double p_p, double E_cut)
 {
-    // phg.Test();	    //gamma
-    // php.Test();	    //positron
-    // phe.Test();		//electron
-    // phanm.Test();	//anti-nu_mu
-    // phane.Test();	//anti-nu_e
+    // phg.Test();	//gamma
+    // php.Test();	//positron
+    // phe.Test();	//electron
+    // phanm.Test();//anti-nu_mu
+    // phane.Test();//anti-nu_e
     // phnm.Test();	//nu_mu
     // phne.Test();	//nu_e
     printf("%le\n", mp);
-    p.Process();
+    p.Process(file_path, energy_proton_min, energy_proton_max, p_p, E_cut);
 }
 
 int main()
 {
-    photohadron();
+    // photohadron();
     return 0;
 }

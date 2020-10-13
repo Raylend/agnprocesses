@@ -10,7 +10,7 @@ module = Extension(
 
 setup(
     name='pgamma_ext',
-    version='0.0.1',
-    description="Initial trial to implement Dzhatdoev's PhotoHadron library",
+    version='0.2.0',
+    description="Implementation with argument transfer of Dzhatdoev's PhotoHadron library",
     ext_modules=[module]
 )
