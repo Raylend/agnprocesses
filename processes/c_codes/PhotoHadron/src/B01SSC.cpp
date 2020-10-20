@@ -139,8 +139,9 @@ void B01SSC::PrepareSSC(char * file_path)
     }
     else
     {
-        fprintf(fp, "Reding the following photon field:");
+        fprintf(fp, "Reading the following photon field:\n");
         fputs(file_path, fp);
+        fprintf(fp, "\n", fp);
     }
     fclose(fp);
     // fd = fopen("processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt", "r");
