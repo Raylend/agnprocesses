@@ -22,12 +22,11 @@ def power_law(en,
 
 
 def broken_power_law(en, gamma1, gamma2, en_break, norm=1.0 * u.eV**(-1)):
-
     en1 = en[en <= en_break]
     en2 = en[en > en_break]
     f1 = (en1 / en_break)**(-gamma1)
     f2 = (en2 / en_break)**(-gamma2)
-    f = np.concatenate((f1, f2), axis=0) * norm
+    f = (np.concatenate((f1, f2), axis=0) * norm).reshape(en.shape)
     try:
         f = f.to(norm.unit)
     except AttributeError:
@@ -156,13 +155,13 @@ def summ_spectra(e1, s1, e2, s2, nbin=100):
     f1 = interpolate.interp1d(logx1, logy1,
                               kind='linear',
                               bounds_error=False,
-                              fill_value=(0, 0))
+                              fill_value=(-40, -40))
     logx2 = np.log10(e2)
     logy2 = np.log10(s2)
     f2 = interpolate.interp1d(logx2, logy2,
                               kind='linear',
                               bounds_error=False,
-                              fill_value=(0, 0))
+                              fill_value=(-40, -40))
     emin = np.min((np.min(e1), np.min(e2)))
     emax = np.max((np.max(e1), np.max(e2)))
     e = np.logspace(np.log10(emin), np.log10(emax), nbin)
