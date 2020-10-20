@@ -34,17 +34,17 @@ def inverse_compton_base(alpha, g, alpha1):
     alpha_max = 4.0 * alpha1 * g * g / (1.0 + 4.0 * g * alpha1)
     ###########################################################################
     if (alpha > alpha1) and (alpha < alpha_max):
-        t1 = 2.0 * np.pi / (alpha1 * g * g)
+        t1 = 2.0 / (alpha1 * g * g)
         q = alpha / (4.0 * alpha1 * g * g * (1.0 - alpha / g))
         if ((1.0 / (4.0 * g * g) >= q) or (q > 1.0)):
             raise ValueError("Approximation is not valid! Abort session")
         t2 = 2.0 * q * np.log(q) + (1.0 + 2.0 * q) * (1.0 - q)
-        t3 = 1.0 / 2.0 * (4.0 * alpha1 * g * q)**2 / \
+        t3 = 0.5 * (4.0 * alpha1 * g * q)**2 / \
             (1.0 + 4.0 * alpha1 * g * q) * (1.0 - q)
         res = (t1 * (t2 + t3))
     ###########################################################################
     if (alpha <= alpha1):
-        res = np.pi / (2.0 * g * g * g * g * alpha1) * \
+        res = 1.0 / (2.0 * g * g * g * g * alpha1) * \
             (4 * g * g * alpha / alpha1 - 1.0)
     ###########################################################################
     if (alpha >= alpha_max):
@@ -95,31 +95,25 @@ def inverse_compton_over_photon_field(alpha,
         a_un = alpha.unit
     except:
         a_un = ''
-    k = r0 * r0 * const.c.cgs
+    k = np.pi * r0 * r0 * const.c.cgs
     ###########################################################################
     if type(energy) == type(3.0) or type(energy) == type(1) \
             or type(energy) == type(np.arange(0, 3)):
         g = energy
-    ############################################################################
     elif energy.unit == 'dimensionless' or energy.unit == '':
         g = energy
-    ############################################################################
     elif energy.unit in list_of_energies:
         g = (energy / rest_energy).decompose().value
-    ############################################################################
     else:
         raise ValueError("invalid type of the argument 'energy'")
     ############################################################################
     if type(eps) == type(3.0) or type(eps) == type(1) \
             or type(eps) == type(np.arange(0, 3)):
         pass
-    ############################################################################
     elif eps.unit == 'dimensionless' or eps.unit == '':
         pass
-    ############################################################################
     elif eps.unit in list_of_energies:
         eps = (eps / rest_energy).decompose().value
-    ############################################################################
     else:
         raise ValueError(
             "invalid type of the argument 'eps' (first column of 'field')")
@@ -127,32 +121,31 @@ def inverse_compton_over_photon_field(alpha,
     if type(alpha) == type(3.0) or type(alpha) == type(1) \
             or type(alpha) == type(np.arange(0, 3)):
         pass
-    ############################################################################
     elif alpha.unit == 'dimensionless' or alpha.unit == '':
         pass
-    ############################################################################
     elif alpha.unit in list_of_energies:
         alpha = (alpha / rest_energy).decompose().value
-    ############################################################################
     else:
         raise ValueError("invalid type of the argument 'alpha'")
     ############################################################################
     if len(eps) < 1:
         raise ValueError(
-            "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
-
-    if len(eps) >= 3:  # if we have external field as spectrum
+            "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy & density).")
+    elif len(eps) >= 3:  # if we have external field as spectrum
         def map_alpha(alpha_single):
             def func(epsilon):
                 return inverse_compton_base(alpha_single, g, epsilon)
             y = np.array(list(map(func, eps)))
+            # here eps is in units of particle mass!
+            # so we divide the result only by the particle_mass.unit!
             res = simps(y * dens, eps)
             return res
         final = np.array(list(map(map_alpha, alpha)))
+        #final = np.array(final)
         final = final * k * background_photon_density_unit * background_photon_energy_unit
         final = final.decompose()
         if a_un != '' and a_un != 'dimensionless':
-            final /= particle_mass.to(a_un, u.mass_energy())
+            final = final / particle_mass.to(a_un, u.mass_energy()).unit
     else:  # if we have external field as monoenergetic
         def map_alpha(alpha_single):
             res = inverse_compton_base(
@@ -162,7 +155,7 @@ def inverse_compton_over_photon_field(alpha,
         final = final * k * background_photon_density_unit * background_photon_energy_unit
         final = final.decompose()
         if a_un != '' and a_un != 'dimensionless':
-            final /= particle_mass.to(a_un, u.mass_energy())
+            final = final / particle_mass.to(a_un, u.mass_energy()).unit
     return final
 
 
@@ -211,6 +204,12 @@ def inverse_compton_spec(
 
     ALL energies must be with the same units of astropy quantities or must be
     nd.arrays (in the latter case they will be considered as Lorentz factors)
+
+    field is the string with the path to the photon field .txt file OR numpy
+    array with 2 colums: the first column is the background photon energy, the
+    second columnn is the background photon density. Units in the table must
+    correspond to the background_photon_energy_unit parameter and the
+    background_photon_density_unit parameter.
     """
     ############################################################################
     valid_spec_laws = ['power_law', 'broken_power_law',
@@ -246,25 +245,34 @@ def inverse_compton_spec(
 
             def underintegral(energy):
                 return(
-                    inverse_compton_over_photon_field(alpha,
-                                                      energy,
-                                                      field,
-                                                      particle_mass=particle_mass,
-                                                      particle_charge=particle_charge,
-                                                      background_photon_energy_unit=background_photon_energy_unit,
-                                                      background_photon_density_unit=background_photon_density_unit) *
-                    spec.broken_power_law(
+                    (inverse_compton_over_photon_field(alpha,
+                                                       energy,
+                                                       field,
+                                                       particle_mass=particle_mass,
+                                                       particle_charge=particle_charge,
+                                                       background_photon_energy_unit=background_photon_energy_unit,
+                                                       background_photon_density_unit=background_photon_density_unit)).value *
+                    (spec.broken_power_law(
                         energy, gamma1, gamma2, en_break, norm=norm
-                    )
+                    )).value
                 )
             y = np.array(list(map(underintegral, ee)))
             f = np.array(list(
                 map(
-                    lambda i: simps(y[:, i], ee.value),
+                    lambda i: simps(y[:, i].reshape(ee.shape), ee.value),
                     range(0, alpha.shape[0])
                 )
             )
-            ) * underintegral(ee[0]).unit * ee[0].unit
+            ) * (inverse_compton_over_photon_field(alpha,
+                                                   ee[0],
+                                                   field,
+                                                   particle_mass=particle_mass,
+                                                   particle_charge=particle_charge,
+                                                   background_photon_energy_unit=background_photon_energy_unit,
+                                                   background_photon_density_unit=background_photon_density_unit)).unit * \
+                (spec.broken_power_law(
+                    ee[0], gamma1, gamma2, en_break, norm=norm)
+                 ).unit * ee[0].unit
             # f = f.decompose(['eV', 's', 'cm'])
         else:
             raise ValueError(
@@ -289,10 +297,10 @@ def inverse_compton_spec(
                                                       particle_mass=particle_mass,
                                                       particle_charge=particle_charge,
                                                       background_photon_energy_unit=background_photon_energy_unit,
-                                                      background_photon_density_unit=background_photon_density_unit) *
+                                                      background_photon_density_unit=background_photon_density_unit).value *
                     spec.exponential_cutoff(
                         energy, gamma1, en_cutoff, norm=norm, en_ref=en_ref
-                    )
+                    ).value
                 )
             y = np.array(list(map(underintegral, ee)))
             f = np.array(list(
@@ -301,7 +309,15 @@ def inverse_compton_spec(
                     range(0, alpha.shape[0])
                 )
             )
-            ) * underintegral(ee[0]).unit * ee[0].unit
+            ) * inverse_compton_over_photon_field(alpha,
+                                                  ee[0],
+                                                  field,
+                                                  particle_mass=particle_mass,
+                                                  particle_charge=particle_charge,
+                                                  background_photon_energy_unit=background_photon_energy_unit,
+                                                  background_photon_density_unit=background_photon_density_unit).unit * spec.exponential_cutoff(
+                ee[0], gamma1, en_cutoff, norm=norm, en_ref=en_ref
+            ).unit * ee[0].unit
             # f = f.decompose(['eV', 's', 'cm'])
         else:
             raise ValueError(
@@ -314,72 +330,50 @@ def inverse_compton_spec(
 
 if __name__ == '__main__':
     spec.test()
-    eps = np.logspace(-3, 1, 100) * u.eV
+    eps = np.logspace(-10, -2, 1000) * u.eV
     eps = eps.reshape(eps.shape[0], 1)
-    T = 1.0 * u.eV
+    T = 2.7 * u.K
     dens = spec.greybody_spectrum(eps,
                                   T,
                                   dilution=1.0)
     field = np.concatenate((eps.value, dens.value), axis=1)
-    ###########################################################################
-    gamma = 2.0
-    en_ref = 1.0 * u.eV
-    en_cutoff = 2.0e+10 * u.eV
-    alpha = np.logspace(0, 10.8, 100) * u.eV
-    en_min = 5.0e+06 * u.eV
-    en_max = 5.0e+15 * u.eV
-    s = inverse_compton_spec(
-        alpha,
+    np.savetxt(
+        'processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt',
         field,
-        norm=1.0 * u.eV**(-1),
-        spec_law='exponential_cutoff',
-        gamma1=gamma,
-        en_cutoff=en_cutoff,
-        en_min=en_min,
-        en_max=en_max,
-        en_ref=en_ref,
-        number_of_integration=100,
-        particle_mass=const.m_e.cgs,
-        particle_charge=const.e.gauss,
-        background_photon_energy_unit=u.eV,
-        background_photon_density_unit=(u.eV * u.cm**3)**(-1)
-    )
-    s = s * alpha**2
-    s = s / np.max(s)
-    scilab = np.loadtxt(
-        '/home/raylend/Science/agnprocesses/test_figures/IC_Khangulian_scilab/IC_Khangulian_scilab.txt')
+        fmt='%1.6e')
+    ###########################################################################
     ############################################################################
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(1, 1, 1)
-
-    plt.plot(
-        alpha, s,
-        marker=None,
-        linewidth=3,
-        # color = 'g',
-        label='Egor python, Jones (1968)'
-    )
-    plt.plot(
-        scilab[:, 0], scilab[:, 1],
-        marker=None,
-        linewidth=3,
-        linestyle='--',
-        # color = 'b',
-        label='Egor scilab, Khangulian (2014)'
-    )
-    plt.xlabel('photon energy, ' + str(alpha.unit), fontsize=18)
-    plt.xticks(fontsize=12)
-    plt.ylabel('SED, arb.units', fontsize=18)
-    plt.yticks(fontsize=12)
-    plt.xscale("log")
-    plt.yscale("log")
-    # ax.set_xlim(1.0e+04, 1.0e+05)
-    # ax.set_ylim(1.0e-09, 1.0e-07)
-    # ax.grid()
-    # ax.grid()
-    plt.legend(loc='lower right')
-    # fig.savefig(
-    #     'test_figures/exponential_cutoff_compare_with_Derishev_fig4a.pdf'
+    # fig = plt.figure(figsize=(8, 6))
+    # ax = fig.add_subplot(1, 1, 1)
+    #
+    # plt.plot(
+    #     alpha, s,
+    #     marker=None,
+    #     linewidth=3,
+    #     # color = 'g',
+    #     label='Egor python, Jones (1968)'
     # )
-
-    plt.show()
+    # plt.plot(
+    #     scilab[:, 0], scilab[:, 1],
+    #     marker=None,
+    #     linewidth=3,
+    #     linestyle='--',
+    #     # color = 'b',
+    #     label='Egor scilab, Khangulian (2014)'
+    # )
+    # plt.xlabel('photon energy, ' + str(alpha.unit), fontsize=18)
+    # plt.xticks(fontsize=12)
+    # plt.ylabel('SED, arb.units', fontsize=18)
+    # plt.yticks(fontsize=12)
+    # plt.xscale("log")
+    # plt.yscale("log")
+    # # ax.set_xlim(1.0e+04, 1.0e+05)
+    # # ax.set_ylim(1.0e-09, 1.0e-07)
+    # # ax.grid()
+    # # ax.grid()
+    # plt.legend(loc='lower right')
+    # # fig.savefig(
+    # #     'test_figures/exponential_cutoff_compare_with_Derishev_fig4a.pdf'
+    # # )
+    #
+    # plt.show()
