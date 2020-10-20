@@ -9,6 +9,7 @@ It includes:
 - and more
 """
 # %% import
+import processes.cosmology as cosmology
 import processes.synchro as synchro
 import processes.ic as ic
 import processes.spectra as spec
@@ -16,22 +17,11 @@ from astropy import units as u
 from astropy import constants as const
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import (MultipleLocator,
+                               FormatStrFormatter,
+                               AutoMinorLocator)
+import matplotlib.ticker as ticker
 import subprocess  # to run prompt scripts from python
-
-
-# def p_gamma_prepare():
-#     cmd = 'pwd'
-#     cmdout = (subprocess.check_output(
-#         cmd,
-#         shell=True)[:-1]).decode("utf-8") + '/bin/shared'
-#     cmd = "export LD_LIBRARY_PATH=%s" % cmdout
-#     print("cmd = {}".format(cmd))
-#     cmdout = (subprocess.check_output(cmd, shell=True)[:-1]).decode("utf-8")
-#     cmd = "echo $LD_LIBRARY_PATH"
-#     cmdout = (subprocess.check_output(cmd, shell=True)[:-1]).decode("utf-8")
-#     print("$LD_LIBRARY_PATH modified:")
-#     print(cmdout)
-#     return None
 
 
 def pgamma_install():
@@ -47,26 +37,6 @@ def pgamma_install():
     cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/pgamma.cpp -o bin/shared/pgamma.o"
     cmdout = subprocess.check_output(cmd, shell=True)[:-1]
     ###########################################################################
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01PhotoHadronG.cpp -o bin/shared/B01PhotoHadronG.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01PhotoHadronP.cpp -o bin/shared/B01PhotoHadronP.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01PhotoHadronE.cpp -o bin/shared/B01PhotoHadronE.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01PhotoHadronNuMu.cpp -o bin/shared/B01PhotoHadronNuMu.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01PhotoHadronAntiNuMu.cpp -o bin/shared/B01PhotoHadronAntiNuMu.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01PhotoHadronNuE.cpp -o bin/shared/B01PhotoHadronNuE.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01PhotoHadronAntiNuE.cpp -o bin/shared/B01PhotoHadronAntiNuE.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01PlanckianCMB.cpp -o bin/shared/B01PlanckianCMB.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01Planckian.cpp -o bin/shared/B01Planckian.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01SSC.cpp -o bin/shared/B01SSC.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
     print('Done!')
     # % % 2. creating a library file .so
     print("2. Creating an .so library file...")
@@ -88,81 +58,158 @@ def pgamma_install():
 if __name__ == '__main__':
     pgamma_install()
     import pgamma_ext
-    pgamma_ext.pgamma()
-    # %% pre-check
-    # cmd = 'which python'
-    # cmdout = subprocess.check_output(cmd, shell=True)
-    # print(cmdout)
-    # spec.test()
-    # synchro.test()
-    # ic.test()
-    # # %% run
-    # energy_proton_min = 1.0e+17 * u.eV
-    # energy_proton_max = 1.0e+22 * u.eV
-    # p_p = 2.0
-    # en_cut = 2.960774e+19 * u.eV
-    # pgamma.write_proton_parameters(energy_proton_min,
-    #                                energy_proton_max,
-    #                                p_p,
-    #                                en_cut=en_cut)
-    # cmdout = pgamma.run_cpp_photo_hadron()
-    # print(cmdout)
-    # %%
-    # b = (1.0 * u.g**0.5 * u.cm**(-0.5) * u.s**(-1))
-    # # b = 3 * u.G.decompose().cgs
-    # print("b = {}".format(b))
-    # norm = 1.0 * u.GeV**(-1)
-    # particle_mass = const.m_e.cgs
-    # particle_charge = const.e.gauss
-    # omega_B_0 = particle_charge * b / (particle_mass * const.c.cgs)
-    #
-    # en_cutoff = 1.0 * u.GeV  # / particle_mass.to(u.GeV, u.mass_energy())
-    # omega_0 = omega_B_0 * 4.0 / 3.0 * en_cutoff**2
-    # nu_0 = omega_0 / (2.0 * np.pi)
-    # nu_B_0 = omega_B_0 / (2.0 * np.pi)
-    # nu = np.logspace(10, 15, 10) * u.Hz
-    # f = synchro.derishev_synchro_spec(nu, b=b, norm=norm,
-    #                                   spec_law='exponential_cutoff',
-    #                                   gamma1=3.0,
-    #                                   en_cutoff=en_cutoff,
-    #                                   en_min=1.0e-04 * en_cutoff,
-    #                                   en_max=1.0e+02 * en_cutoff,
-    #                                   en_ref=en_cutoff)
-    #
-    # print(f)
-    # SED = (const.h**2 * nu**2).to(u.eV**2) * f
-    # SED = SED / np.max(SED)
-    # nu = nu / en_cutoff**2 / nu_B_0
-    # Derishev = np.loadtxt('Derishev_fig4.out')
-    ############################################################################
+    ###########################################################################
+    # Repeat the SSC model from the Stability apply supplement file
+    z = 0.3365
+    d_l = cosmology.luminosity_distance(z).to(u.cm)
+    print("d_l = {:.6e}".format(d_l))
+    norm_e = 1.9e+40 * u.eV**(-1) * 0.6
+    gamma1 = 1.9  # 1.69  #
+    gamma2 = 4.5  # 4.29  #
+    e_br = 9.0 * u.GeV * np.sqrt((1 + z)**3) * 0.8
+    e_min_e = 5.0e+06 * u.eV  # 10.0**1.33 * (const.m_e * const.c**2).to(u.eV)
+    e_max_e = 1.0e+12 * u.eV  # 10.0**6.82 * (const.m_e * const.c**2).to(u.eV)
+    e_e = np.logspace(np.log10(e_min_e.value),
+                      np.log10(e_max_e.value), 100) * u.eV
+    doppler = 30.0  # 2.0 * 10.0**1.43
+    r_b = 1.0e+17 * u.cm  # 10.0**16.46 * u.cm  #
+    b = 0.05 * u.G / ((1 + z)**3) * 1.5  # 10.0**(-1.01) * u.G  #
+    ###########################################################################
+    # synchrotron
+    nu = np.logspace(7, 19, 100) * u.Hz
+    synchro_spec = synchro.derishev_synchro_spec(nu, b,
+                                                 norm=norm_e,
+                                                 spec_law='broken_power_law',
+                                                 gamma1=gamma1,
+                                                 gamma2=gamma2,
+                                                 en_break=e_br,
+                                                 en_min=e_min_e,
+                                                 en_max=e_max_e)
+    synchro_epsilon = ((const.h * nu).to(u.eV))
+    synchro_density = synchro_spec / (4.0 / 3.0 * np.pi * r_b**2 * const.c.to(
+        u.cm / u.s)
+    )
+    synchro_e = synchro_epsilon / (1.0 + z) * doppler
+    synchro_sed = synchro_epsilon**2 * synchro_spec
+    synchro_sed = synchro_sed * doppler**4 / (4.0 * np.pi * d_l**2)
+    ###########################################################################
+    # IC
+    field = np.concatenate(
+        (synchro_epsilon.value.reshape(synchro_epsilon.shape[0], 1),
+         synchro_density.value.reshape(synchro_density.shape[0], 1)),
+        axis=1
+    )
+    ic_e = np.logspace(0, 11.5, 100) * u.eV
+    ic_spec = ic.inverse_compton_spec(ic_e,
+                                      field,
+                                      norm=norm_e,
+                                      spec_law='broken_power_law',
+                                      gamma1=gamma1,
+                                      gamma2=gamma2,
+                                      en_break=e_br,
+                                      en_min=e_min_e,
+                                      en_max=e_max_e,
+                                      background_photon_energy_unit=synchro_epsilon.unit,
+                                      background_photon_density_unit=synchro_density.unit)
+    ic_sed = ic_e**2 * ic_spec
+    ic_e *= doppler / (1.0 + z)
+    ic_sed *= doppler**4 / (4.0 * np.pi * d_l**2)
+    print("ic_sed.unit = {}".format(ic_sed.unit))
+    ###########################################################################
+    summ_e, summ_sed = spec.summ_spectra(synchro_e, synchro_sed, ic_e, ic_sed)
+    ###########################################################################
+    # proton target is the comptonized synchrotron (SSC) photon fields according to Troitsky
+    proton_target_e = ic_e / doppler * (1.0 + z)
+    proton_target_spec = ic_spec / (4.0 / 3.0 * np.pi * r_b**2 * const.c.to(
+        u.cm / u.s)
+    )
+    proton_target = np.concatenate(
+        (proton_target_e.value.reshape(proton_target_e.shape[0], 1),
+         proton_target_spec.value.reshape(proton_target_spec.shape[0], 1)),
+        axis=1
+    )
+    proton_target_path = 'processes/c_codes/PhotoHadron/input/Troitsky_proton_target.txt'
+    np.savetxt(proton_target_path, proton_target, fmt='%.6e')
+    energy_proton_min = 10 * u.TeV.to(u.eV)
+    energy_proton_max = 6 * u.PeV.to(u.eV)
+    p_p = 2.0
+    C_p = 1.0e+50 * u.eV**(-1)
+    pgamma_ext.pgamma(proton_target_path,
+                      energy_proton_min,
+                      energy_proton_max,
+                      p_p, -1)
+    neutrino = np.loadtxt('')
+    ###########################################################################
+    # Data from Science
+    data = np.loadtxt(
+        'data/science-2017_gamma_flare_electromagnetic_component_v2.txt')
+    data_en = data[:, 0]
+    data_sed = data[:, 1]
+    data_low = data[:, 3]
+    data_up = data[:, 2]
+    yerr = [data_low, data_up]
+    ###########################################################################
+    # Compare with C code IC
+    # c = np.loadtxt(
+    # '/home/raylend/Science/agnprocesses/test_figures/IC_Khangulian_scilab/IC_Khangulian_scilab_CMB.txt')
+    ###########################################################################
     # fig = plt.figure(figsize=(8, 6))
     # ax = fig.add_subplot(1, 1, 1)
-    #
+    fig, ax = plt.subplots()
+
+    plt.plot(
+        summ_e, summ_sed,
+        marker=None,
+        linestyle='-',
+        linewidth=3,
+        color='k',
+        label='summ'
+    )
     # plt.plot(
-    #     nu, SED,
+    #     c[:, 0], c[:, 1],
     #     marker=None,
-    #     linewidth=3,
-    #     # color = 'g',
-    #     label='Egor'
-    # )
-    # plt.plot(
-    #     Derishev[:, 0], Derishev[:, 1],
-    #     marker=None,
-    #     linewidth=3,
     #     linestyle='--',
-    #     # color = 'b',
-    #     label='Derishev'
+    #     linewidth=3,
+    #     color='g',
+    #     label='scilab'
     # )
-    #
+    plt.plot(
+        synchro_e, synchro_sed,
+        marker=None,
+        linestyle='--',
+        linewidth=3,
+        color='r',
+        label='synchrotron without SSA'
+    )
+    plt.plot(
+        ic_e, ic_sed,
+        marker=None,
+        linewidth=3,
+        linestyle=':',
+        color='b',
+        label='SSC'
+    )
+    plt.errorbar(data_en, data_sed,
+                 yerr=yerr, xerr=None, fmt='o', linewidth=0, elinewidth=2,
+                 capsize=1, barsabove=False, markersize=5,
+                 errorevery=1, capthick=1, color='r', zorder=100.0)
+
     # plt.xscale("log")
     # plt.yscale("log")
-    # #ax.set_xlim(1.0e+04, 1.0e+05)
-    # #ax.set_ylim(1.0e-09, 1.0e-07)
-    # # ax.grid()
-    # # ax.grid()
+    plt.xlabel('energy, ' + str(ic_e.unit), fontsize=18)
+    plt.xticks(fontsize=12)
+    plt.ylabel('SED, ' + str(ic_sed.unit), fontsize=18)
+    plt.yticks(fontsize=12)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.xaxis.set_major_locator(ticker.LogLocator(
+        base=10.0, numticks=26, subs=[1, 2, 3, 4, 5, 6, 7, 8, 9]))
+    # ax.set_xlim(1.0e+04, 1.0e+05)
+    # ax.set_ylim(1.0e-09, 1.0e-07)
+    # ax.grid()
+    # ax.grid()
     # plt.legend(loc='upper right')
-    # fig.savefig(
-    #     'test_figures/exponential_cutoff_compare_with_Derishev_fig4a.pdf'
-    # )
-    #
-    # plt.show()
+    # fig.savefig('test_figures/exponential_cutoff_compare_with_Derishev_fig4a.pdf')
+    plt.legend()
+    plt.show()
+    ############################################################################
