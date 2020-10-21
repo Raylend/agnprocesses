@@ -132,16 +132,19 @@ def derishev_synchro_spec(
 
             def underintegral(energy):
                 return(
-                    derishev(
+                    (derishev(
                         nu, energy, b=b,
                         particle_mass=particle_mass,
-                        particle_charge=particle_charge) * spec.broken_power_law(
-                        energy, gamma1, gamma2, en_break, norm=norm)
+                        particle_charge=particle_charge)).value * (spec.broken_power_law(
+                            energy, gamma1, gamma2, en_break, norm=norm)).value
                 )
             y = np.array(list(map(underintegral, ee)))
             f = np.array(list(map(
-                lambda i: simps(y[:, i], ee.value), range(0, nu.shape[0])))) \
-                * underintegral(ee[0]).unit * ee[0].unit
+                lambda i: simps(y[:, i].reshape(ee.shape), ee.value), range(0, nu.shape[0])))) * derishev(
+                    nu, ee[0], b=b,
+                    particle_mass=particle_mass,
+                    particle_charge=particle_charge).unit * spec.broken_power_law(
+                    ee[0], gamma1, gamma2, en_break, norm=norm).unit * ee[0].unit
         else:
             raise ValueError(
                 "Make sure you defined all of gamma1, gamma2,\

@@ -141,7 +141,7 @@ void B01SSC::PrepareSSC(char * file_path)
     {
         fprintf(fp, "Reading the following photon field:\n");
         fputs(file_path, fp);
-        fprintf(fp, "\n", fp);
+        fprintf(fp, "\n");
     }
     fclose(fp);
     // fd = fopen("processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt", "r");
@@ -155,10 +155,14 @@ void B01SSC::PrepareSSC(char * file_path)
     {
         printf("The photon field file has been read successfully.\n");
     }
-    for (int i = 0; i < SIZE_N_PHOTONS_SYNCHRO; i++)
+    // for (int i = 0; i < SIZE_N_PHOTONS_SYNCHRO; i++)
+    int i = 0;
+    while(!feof(fd))
     {
         fscanf(fd, "%le %le", &epsilon_synchro[i], &nph_synchro[i]);
+        i++;
     }
+    i = 0;
     fclose(fd);
 }
 
@@ -174,17 +178,16 @@ int B01SSC::Process(char* file_path, double energy_proton_min_ext, double energy
     const double a_p = log10(energy_proton_max / energy_proton_min) / (double)N_PROTON;
     //
     //
-    const double energy_neutrino_min = energy_proton_min; //eV
-    printf("energy_neutrino_min = %le\n", energy_neutrino_min);
-    const double energy_neutrino_max = energy_proton_max; // eV
+    const double energy_neutrino_min = energy_proton_min*1.0e-03; //eV
+    const double energy_neutrino_max = energy_proton_max * 0.99; // eV
     const double a_neu = log10(energy_neutrino_max/energy_neutrino_min)/(double)SIZE_ENERGY_NEUTRINO;
     //
-    const double energy_electron_min = energy_proton_min; // eV
-    const double energy_electron_max = energy_proton_max; // eV
+    const double energy_electron_min = energy_proton_min*1.0e-03; // eV
+    const double energy_electron_max = energy_proton_max * 0.99; // eV
     const double a_e = log10(energy_electron_max/energy_electron_min)/(double)SIZE_ENERGY_ELECTRON;
     //
-    const double energy_gamma_min = energy_proton_min; // eV
-    const double energy_gamma_max = energy_proton_max; // eV
+    const double energy_gamma_min = energy_proton_min*1.0e-03; // eV
+    const double energy_gamma_max = energy_proton_max * 0.99; // eV
     const double a_g = log10(energy_gamma_max/energy_gamma_min)/(double)SIZE_ENERGY_GAMMA;
     // neutrinos
     for (int k = 0; k < SIZE_ENERGY_NEUTRINO; k++)
@@ -222,7 +225,7 @@ int B01SSC::Process(char* file_path, double energy_proton_min_ext, double energy
     for (int i = 0; i < N_PROTON; i++)
     {
         B01SSC::Integrate(i);
-        printf("%d\n", i);
+        // printf("%d\n", i);
     }
     PrepareSEDIntermediate();
     FinalSED();
@@ -442,7 +445,7 @@ void B01SSC::FinalSED()
             max = SED_neutrino_final[l];
         }
     }
-    fp = fopen("processes/c_codes/PhotoHadron/output/neutrino_spectrum.txt", "w");
+    fp = fopen("processes/c_codes/PhotoHadron/output/neutrino_SED.txt", "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
@@ -477,7 +480,7 @@ void B01SSC::FinalSED()
             max = SED_electron_final[l];
         }
     }
-    fp = fopen("processes/c_codes/PhotoHadron/output/electron_spectrum.txt", "w");
+    fp = fopen("processes/c_codes/PhotoHadron/output/electron_SED.txt", "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
@@ -508,7 +511,7 @@ void B01SSC::FinalSED()
             max = SED_gamma_final[l];
         }
     }
-    fp = fopen("processes/c_codes/PhotoHadron/output/gamma_spectrum.txt", "w");
+    fp = fopen("processes/c_codes/PhotoHadron/output/gamma_SED.txt", "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");

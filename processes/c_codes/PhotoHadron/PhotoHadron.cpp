@@ -31,7 +31,6 @@ void photohadron(char* file_path, double energy_proton_min, double energy_proton
     // phane.Test();//anti-nu_e
     // phnm.Test();	//nu_mu
     // phne.Test();	//nu_e
-    printf("%le\n", mp);
     p.Process(file_path, energy_proton_min, energy_proton_max, p_p, E_cut);
 }
 
