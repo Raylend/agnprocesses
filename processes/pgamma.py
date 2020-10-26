@@ -27,18 +27,15 @@ def pgamma_install(dev_mode=True):
             pgamma_install_flag = 0
         f.close()
     if pgamma_install_flag == 0 or dev_mode == True:
-        # p_gamma_prepare()
         # %% 1. creating .o files
         print("1. Creating .o files...")
-        # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01Structures.cpp -o bin/shared/B01Structures.o"
-        # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ###########################################################################
+        ########################################################################
         cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/PhotoHadron.cpp -o bin/shared/PhotoHadron.o"
         cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ###########################################################################
+        ########################################################################
         cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/pgamma.cpp -o bin/shared/pgamma.o"
         cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ###########################################################################
+        ########################################################################
         print('Done!')
         # % % 2. creating a library file .so
         print("2. Creating an .so library file...")
