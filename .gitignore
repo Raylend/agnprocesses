@@ -13,3 +13,4 @@ processes/c_codes/PhotoHadron/Neutrino
 *.pyc
 *.o
 *.so
+processes/pgamma-log

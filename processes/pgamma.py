@@ -1,6 +1,7 @@
 """
-This program computes electron + positron, gamma and muon neutrion spectrum
-using T. A. Dzhatdoev's C++ codes. See Kelner, & Aharonian Phys. Rev. D 78, 034013 (2008)
+This program computes electron + positron, gamma and muon neutrino and
+antinutrino spectra using T. A. Dzhatdoev's C++ codes.
+See Kelner, & Aharonian Phys. Rev. D 78, 034013 (2008)
 """
 import subprocess  # to run prompt scripts from python
 # import os
