@@ -50,10 +50,9 @@ class B01SSC
     int Process(char* file_path, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext);
     int Integrate(int proton_energy_number);
     // void read_protons_parameters();
-    double proton_spectrum(double E_p_eV, double p_p);
+    double proton_spectrum(double E_p_eV, double p_p, double E_cut_p);
     void PrepareSEDIntermediate();
     void FinalSED();
-    double raw_proton_spectrum(double E_p_eV, double p_p);
     //
     FILE *fpa;
     FILE *fpn;
@@ -433,7 +432,7 @@ void B01SSC::FinalSED()
     {
         for (int j = 1; j < N_PROTON; j++)
         {
-            SED_neutrino_final[l] += SED_neutrino_intermediate[l][j]*B01SSC::proton_spectrum(energy_proton[j], p_p)*(energy_proton[j] - energy_proton[j-1]);
+            SED_neutrino_final[l] += SED_neutrino_intermediate[l][j]*B01SSC::proton_spectrum(energy_proton[j], p_p, E_cut)*(energy_proton[j] - energy_proton[j-1]);
         }
     }
     double max = 0;
@@ -465,7 +464,7 @@ void B01SSC::FinalSED()
     {
         for (int j = 1; j < N_PROTON; j++)
         {
-            SED_electron_final[l] += SED_electron_intermediate[l][j]*B01SSC::proton_spectrum(energy_proton[j], p_p)*(energy_proton[j] - energy_proton[j-1]);
+            SED_electron_final[l] += SED_electron_intermediate[l][j]*B01SSC::proton_spectrum(energy_proton[j], p_p, E_cut)*(energy_proton[j] - energy_proton[j-1]);
         }
         // for (int j = 0; j < N_PROTON-1; j++)
         // {
@@ -500,7 +499,7 @@ void B01SSC::FinalSED()
     {
         for (int j = 1; j < N_PROTON; j++)
         {
-            SED_gamma_final[l] += SED_gamma_intermediate[l][j]*B01SSC::proton_spectrum(energy_proton[j], p_p)*(energy_proton[j] - energy_proton[j-1]);
+            SED_gamma_final[l] += SED_gamma_intermediate[l][j]*B01SSC::proton_spectrum(energy_proton[j], p_p, E_cut)*(energy_proton[j] - energy_proton[j-1]);
         }
     }
     max = 0;
@@ -527,14 +526,14 @@ void B01SSC::FinalSED()
     fclose(fp);
 }
 
-double B01SSC::proton_spectrum(double E_p_eV, double p_p)
+double B01SSC::proton_spectrum(double E_p_eV, double p_p, double E_cut_p)
 {
-    if (E_cut < 0)
+    if (E_cut_p < 0)
     {
         return pow(E_p_eV/E_ref, -p_p);
     }
     else
     {
-        return (pow(E_p_eV/E_ref, -p_p) * exp(-E_p_eV / E_cut));
+        return (pow(E_p_eV/E_ref, -p_p) * exp(-E_p_eV / E_cut_p));
     }
 }

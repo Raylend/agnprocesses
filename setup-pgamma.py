@@ -10,7 +10,7 @@ module = Extension(
 
 setup(
     name='pgamma_ext',
-    version='0.2.0',
-    description="Implementation with argument transfer of Dzhatdoev's PhotoHadron library",
+    version='0.3.0',
+    description="Implementation with argument transfer of Dzhatdoev's PhotoHadron library and .py wrapper-like function kelner_pgamma_calculate()",
     ext_modules=[module]
 )

@@ -1,11 +1,12 @@
 # This is the main python3 file for agnprocesses package.
 """
 agnprocessec is the package for calculation of various astrophysical
-processes which can occur in active galactic nuclei.
+processes which can occur in active galactic nuclei (but not only there).
 It includes:
 - synchrotron emission
 - inverse Compton (IC) process
-- photo-hadron process
+- photo-hadron process (photomeson production)
+- Bethe-Heitler (BH) proton pair production on photon field
 - and more
 """
 # %% import
@@ -13,6 +14,8 @@ import processes.cosmology as cosmology
 import processes.synchro as synchro
 import processes.ic as ic
 import processes.spectra as spec
+import processes.pgamma as pgamma
+###############################################################################
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
@@ -25,40 +28,21 @@ import subprocess  # to run prompt scripts from python
 from scipy.integrate import simps
 
 
-def pgamma_install():
-    # p_gamma_prepare()
-    # %% 1. creating .o files
-    print("1. Creating .o files...")
-    # cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/src/B01Structures.cpp -o bin/shared/B01Structures.o"
-    # cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    ###########################################################################
-    cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/PhotoHadron.cpp -o bin/shared/PhotoHadron.o"
-    cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    ###########################################################################
-    cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/pgamma.cpp -o bin/shared/pgamma.o"
-    cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    ###########################################################################
-    print('Done!')
-    # % % 2. creating a library file .so
-    print("2. Creating an .so library file...")
-    cmd = 'g++ -shared bin/shared/PhotoHadron.o bin/shared/pgamma.o -o bin/shared/libPhotoHadron.so'
-    # cmd = 'gcc -shared bin/shared/pgamma.o -o bin/shared/libPhotoHadron.so'
-    cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    print('Done!')
-    # %% 3. installing setup.py, i.e. installing the module
-    print("3. Installing the module...")
-    cmd = 'python setup.py install'
-    cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-    print(str(cmdout))
-    print('Done!')
-    # # # %% 4. cheking
-    # # print("4.Checking")
-    return None
-
-
 if __name__ == '__main__':
-    pgamma_install()
-    import pgamma_ext
+    # en_cmb = np.logspace(-11, -2, 100) * u.eV
+    # grey = spec.greybody_spectrum(en_cmb, 2.7 * u.K)
+    # field3 = np.concatenate((en_cmb.value.reshape(en_cmb.shape[0], 1),
+    #                          grey.value.reshape(grey.shape[0], 1)),
+    #                         axis=1)
+    # np.savetxt('CMB_Kelner_BH_100.txt', field3, fmt='%.6e')
+    ###########################################################################
+    # pgamma.pgamma_install()
+    # import pgamma_ext
+    eta0 = 0.313
+    m_p = const.m_p.to(u.eV, u.mass_energy())
+    print("m_p = {:.6e}".format(m_p))
+    E_star = m_p * (m_p / (4.0 * const.k_B * 2.7 * u.K).to(u.eV)) * eta0
+    print("E_star = {:.6e}".format(E_star))
     ###########################################################################
     # Repeat the SSC model from the Stability apply supplement file
     z = 0.3365
@@ -137,10 +121,10 @@ if __name__ == '__main__':
          proton_target_spec.value.reshape(proton_target_spec.shape[0], 1)),
         axis=1
     )
-    proton_target_path = 'processes/c_codes/PhotoHadron/input/Troitsky_proton_target.txt'
-    np.savetxt(proton_target_path, proton_target, fmt='%.6e')
-    energy_proton_min = (10.0 * u.TeV).to(u.eV)
-    energy_proton_max = (6.0 * u.PeV).to(u.eV)
+    # proton_target_path = 'processes/c_codes/PhotoHadron/input/Troitsky_proton_target.txt'
+    # np.savetxt(proton_target_path, proton_target, fmt='%.6e')
+    energy_proton_min = 10.0 * u.TeV
+    energy_proton_max = 6.0 * u.PeV
     en_p = energy_proton_min.unit * \
         np.logspace(np.log10(energy_proton_min.value),
                     np.log10(energy_proton_max.value),
@@ -161,15 +145,23 @@ if __name__ == '__main__':
     u_b = (b**2 / (8.0 * np.pi)).to(u.erg / u.cm**3)
     print("magnetic field density in the blob = {:.6e}".format(u_b))
     ###########################################################################
-    pgamma_ext.pgamma(proton_target_path,
-                      energy_proton_min.value,
-                      energy_proton_max.value,
-                      p_p, -1)
-    neutrino = np.loadtxt(
-        'processes/c_codes/PhotoHadron/output/neutrino_SED.txt')
-    neutrino_e = neutrino[:, 0] * doppler / (1.0 + z)
-    neutrino_sed = neutrino[:, 1] * doppler**4 / (1.0 + z)
-    neutrino_sed = neutrino_sed * C_p / (4.0 * np.pi * d_l**2)
+    # pgamma_ext.pgamma(proton_target_path,
+    #                   energy_proton_min.value,
+    #                   energy_proton_max.value,
+    #                   p_p, -1)
+    neutrino_e, neutrino_sed, _, _, _, _ = \
+        pgamma.kelner_pgamma_calculate(proton_target,
+                                       energy_proton_min,
+                                       energy_proton_max,
+                                       p_p, e_cut_p=-1,
+                                       C_p=C_p)
+    # neutrino_e = x[0]
+    # neutrino_sed = x[1]
+    # neutrino = np.loadtxt(
+    #     'processes/c_codes/PhotoHadron/output/neutrino_SED.txt')
+    neutrino_e = neutrino_e * doppler / (1.0 + z)
+    neutrino_sed = neutrino_sed * doppler**4 / (1.0 + z)
+    neutrino_sed = neutrino_sed / (4.0 * np.pi * d_l**2)
     ###########################################################################
     neutrino2 = np.loadtxt(
         'processes/c_codes/PhotoHadron/output/neutrino_SED_comptonized_synchro.txt')
