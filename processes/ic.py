@@ -79,14 +79,15 @@ def inverse_compton_over_photon_field(alpha,
             field = np.loadtxt(field)
         except:
             raise ValueError(
-                "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
+                "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density). \n Try to use an absolute path.")
         eps = field[:, 0] * background_photon_energy_unit
         dens = field[:, 1]
     elif type(field) == type(np.array(([2, 1], [5, 6]))):
         eps = field[:, 0] * background_photon_energy_unit
         dens = field[:, 1]
     else:
-        raise ValueError("Invalid value of 'field'!")
+        raise ValueError(
+            "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
     ###########################################################################
     particle_mass = particle_mass.to(u.g, u.mass_energy())
     r0 = particle_charge**2 / (particle_mass * (const.c.cgs)**2)
