@@ -1,14 +1,14 @@
 #define B01SSCFlag	0
-#define SIZE_N_PHOTONS_SYNCHRO 1000 ///!1111111!!!
+#define SIZE_N_PHOTONS_SYNCHRO 100 ///!1111111!!!
 #define SIZE_X 500
 #define SIZE_ENERGY_NEUTRINO 5000
-#define SIZE_ENERGY_ELECTRON 5000 // 50000
+#define SIZE_ENERGY_ELECTRON 5000
 #define SIZE_ENERGY_GAMMA 5000
 #define N_PROTON 50
 #define NEUTRINO_OSCILLATION_FACTOR 0.33333333
 #define MINIMAL_FRACTION 1.0e-04
 // #define KELNER_KOEFFICIENT 3.229068e-13
-#define KELNER_KOEFFICIENT 1.1634328 // now CMB normalization is fixed!
+#define KELNER_KOEFFICIENT 1.1634328 * 1.3// now CMB normalization is fixed!
 #define PROTON_REST_ENERGY 9.38272e+08 // eV
 
 class B01SSC
@@ -66,63 +66,8 @@ class B01SSC
     B01PhotoHadronAntiNuE phane;
 };
 
-// double B01SSC::raw_proton_spectrum(double E_p_eV, double p_p)
-// {
-//     return (pow(E_p_eV/E_ref, -p_p) * exp(-E_p_eV / E_cut));
-// }
-
-// void B01SSC::read_protons_parameters()
-// {
-//     FILE * fp;
-//     fp = fopen("processes/c_codes/PhotoHadron/input/proton_parameters.txt", "r");
-//     if (fp == NULL)
-//     {
-//         printf("Cannot open 'proton_parameters.txt'\n");
-//         exit(1);
-//     }
-//     while(!feof(fp))
-//     {
-//         fscanf(fp, "%le", &energy_proton_min);
-//         fscanf(fp, "%le", &energy_proton_max);
-//         fscanf(fp, "%lf", &p_p);
-//         fscanf(fp, "%le", &E_cut);
-//     }
-//     fclose(fp);
-// }
-
 B01SSC::B01SSC()
-{
-    // double sum = 0.0;
-    // double delta = 0.0;
-    // double t1 = 0;
-    // double t2 = 0;
-    // for (int d= 0; d < N_PROTON - 1; d++)
-    // {
-    //     t1 = B01SSC::raw_proton_spectrum(energy_proton[d], p_p) * energy_proton[d];
-    //     t2 = B01SSC::raw_proton_spectrum(energy_proton[d+1], p_p) * energy_proton[d+1];
-    //     delta = (t1 + t2)/2.0 * (energy_proton[d+1] - energy_proton[d]);
-    //     sum = sum + delta;
-    // }
-    // printf("delta / sum = %le\n", delta / sum);
-    // printf("E_cut = %le eV\n", E_cut);
-    // C_p = 1.0 / 1.602e-12 / sum; // see Kelner2008 eq. (73)
-    //
-    //
-    // // perform normalization of the proton spectrum
-    // E2 = pow(energy_proton_min, -p_p + 1.0);
-    // E1 = pow(energy_proton_max, -p_p + 1.0);
-    // // normalization on one particle
-    // if (p_p != 1.0)
-    // {
-    //     C_p = (p_p - 1)/(pow(E_ref, p_p)*(E2 - E1));
-    // }
-    // else
-    // {
-    //     C_p = 1.0/(pow(E_ref, p_p)*log(energy_proton_max/energy_proton_min));
-    // }
-    // printf("C_p = %le [1/eV]\n", C_p);
-    //
-}
+{}
 
 B01SSC::~B01SSC()
 {}
@@ -167,6 +112,7 @@ void B01SSC::PrepareSSC(char * file_path)
 
 int B01SSC::Process(char* file_path, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext)
 {
+    printf("Performing calculations of proton-photon meson production secondaries SED...\n");
     energy_proton_min = energy_proton_min_ext;
     energy_proton_max = energy_proton_max_ext;
     p_p = p_p_ext;
@@ -229,23 +175,7 @@ int B01SSC::Process(char* file_path, double energy_proton_min_ext, double energy
     PrepareSEDIntermediate();
     FinalSED();
     //
-    //
-    //
-    // for (int i = 0; i < 1; i++)
-    // {
-    //     B01SSC::Integrate(i);
-    //     printf("%d\n", i);
-    // }
-    // fclose(fpn);
-    // fclose(fpa);
-    //
-    // FILE * fd;
-    // fd = fopen("output/electron_spectrum_CMB_3.0e+20eV_v30_monoenergetic.txt", "w");
-    // for (int j = 0; j < SIZE_X; j++)
-    // {
-    //     fprintf(fd, "%le    %le\n", energy_proton[0]*MINIMAL_FRACTION*pow(10.0, a_frac*j), SED_electron_init[j][0]);
-    // }
-    // fclose(fd);
+    printf("Done!\n");
     return(0);
 }
 

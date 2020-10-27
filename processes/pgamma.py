@@ -121,7 +121,7 @@ def kelner_pgamma_calculate(field,
         raise ValueError(
             "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
     if field[:, 0].shape[0] > 100:
-        raise NotImplemented(
+        raise NotImplementedError(
             "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)")
     proton_target_path = 'processes/c_codes/PhotoHadron/input/field.txt'
     np.savetxt(proton_target_path, field, fmt='%.6e')
