@@ -1,0 +1,8 @@
+Make sure you defined a path to the folder containing this README in the
+LD_LIBRARY_PATH Linux (or Mac OS) environment variable.
+To do so you should add a new string to ~/.bashrc file
+(or ~/.bash_profile in Mac OS).
+To open this file run in the terminal the following command:
+'sudo nano ~/.bashrc'
+Then in the end of the opened file add the following line:
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:'absolute_path_to_the_folder_with_this_README'

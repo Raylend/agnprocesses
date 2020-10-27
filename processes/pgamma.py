@@ -20,12 +20,12 @@ except:
 
 
 def pgamma_install(dev_mode=True):
-    with open('processes/pgamma-log', mode='r') as f:
-        try:
+    try:
+        with open('processes/pgamma-log', mode='r') as f:
             pgamma_install_flag = int(f.read(1))
-        except:
-            pgamma_install_flag = 0
-        f.close()
+            f.close()
+    except:
+        pgamma_install_flag = 0
     if pgamma_install_flag == 0 or dev_mode == True:
         # %% 1. creating .o files
         print("1. Creating .o files...")
