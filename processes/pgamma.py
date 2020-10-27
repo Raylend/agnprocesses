@@ -69,9 +69,10 @@ def kelner_pgamma_calculate(field,
                             background_photon_density_unit=(u.eV * u.cm**3)**(-1)):
     """
     energy_proton_min is the minimum proton energy
-    (must be an astropy Quantity of energy or float (in the latter case it will be considered as Lorentz factor))
+    (must be an astropy Quantity of energy or float (in the latter case it will
+    be considered as Lorentz factor))
 
-    energy_proton_min is the maximum proton energy
+    energy_proton_max is the maximum proton energy
     (must be the same type as energy_proton_min)
 
     e_cut_p is the cutoff proton energy. It must be an astropy Quantity or
@@ -85,11 +86,15 @@ def kelner_pgamma_calculate(field,
     background_photon_energy_unit parameter and the
     background_photon_density_unit parameter.
 
-    Returns tuple of three tuples: each of them contains energy in eV of
-    corresponding particle and its SED in eV / (cm**3 s). The order is
-    following: neutrinos, electrons, gamma-rays.
-
     C_p is the normalization coefficient of the proton spectrum.
+
+    Returns tuple of 6 array-like atropy Quantities:
+    particle energy in eV and its SED in eV / (cm**3 s) (3 pairs).
+    The order is the following: neutrinos, electrons, gamma-rays.
+
+    Neutrinos are considered as summ of particles and antiparticles
+    per 1 flavour. To obtain flux of all flavours multiply
+    the result neutrino SED by factor 3.
     """
     try:
         energy_coef = background_photon_energy_unit.to(u.eV) / (1.0 * u.eV)
@@ -115,6 +120,9 @@ def kelner_pgamma_calculate(field,
     else:
         raise ValueError(
             "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
+    if field[:, 0].shape[0] > 100:
+        raise NotImplemented(
+            "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)")
     proton_target_path = 'processes/c_codes/PhotoHadron/input/field.txt'
     np.savetxt(proton_target_path, field, fmt='%.6e')
     ###########################################################################
