@@ -1,13 +1,10 @@
 #define P01PairFlag		0
 #define SIZE_N_PHOTONS_SYNCHRO 100 // !!!
-#define SIZE_INDEPENDENT_ELECTRON_ENERGY 30
-#define SIZE_INTERNAL_INTEGRAL_ELECTRON_ENERGY 30
-#define SIZE_OMEGA 30
-// #define CENTIMETRE 5.068e+04 // GeV^{-1}
-// #define CENTIMETRE_CUBED 1//1.301696744e+14 // GeV^{-3}
-// #define KELNER_KOEFFICIENT 1.906901e-02
-#define KELNER_KOEFFICIENT 51589733910.0
-#define N_PROTON 30
+#define SIZE_INDEPENDENT_ELECTRON_ENERGY 50
+#define SIZE_INTERNAL_INTEGRAL_ELECTRON_ENERGY 50
+#define SIZE_OMEGA 50
+#define KELNER_KOEFFICIENT 51589733910.0 / 1.21
+#define N_PROTON 50
 #define PROTON_REST_ENERGY 9.38272e+08 // eV
 
 class P01Pair:public P01Structures
@@ -18,27 +15,26 @@ class P01Pair:public P01Structures
     // synchrotron_field
     double epsilon_synchro[SIZE_N_PHOTONS_SYNCHRO], nph_synchro[SIZE_N_PHOTONS_SYNCHRO];
     // protons
-    const double energy_proton_min = 1.0e+09; //2.0e+14; // eV
-    const double energy_proton_max = 1.0e+20; //5.5e+14; // eV
-    const double a_p = log10(energy_proton_max/energy_proton_min)/(double)N_PROTON;
-    const double E_star = 2.960774e+20; // eV
-    double E_cut = 0.1 * E_star;
-    const double p_p = 2.0;
-    double E_ref = 1.0e+00; // eV
+    double energy_proton_min; // eV
+    double energy_proton_max; // eV
+    double a_p;
+    double E_cut; // eV
+    double p_p;
+    const double E_ref = 1.0e+00; // eV
     // electrons
-    const double electron_independent_energy_min = 1.0e+13; // eV
-    const double electron_independent_energy_max = 1.0e+20; // eV
-    const double a_el_independent = log10(electron_independent_energy_max/electron_independent_energy_min) / (double) SIZE_INDEPENDENT_ELECTRON_ENERGY;
+    double electron_independent_energy_min; // eV
+    double electron_independent_energy_max; // eV
+    double a_el_independent;
     double Eet[SIZE_INDEPENDENT_ELECTRON_ENERGY];
     double Ee[SIZE_INDEPENDENT_ELECTRON_ENERGY];
     double SED_independent[SIZE_INDEPENDENT_ELECTRON_ENERGY];
     double SED_independent_final[SIZE_INDEPENDENT_ELECTRON_ENERGY];
     // functions
-    int Process();
+    int Process(char*, double, double, double, double);
     int CalcSpectrum(double gammap_);
-    double CalcDelta(double, double);				//for one specific energy
+    double CalcDelta(double, double); //for one specific energy
     double Sigma(double omega, double Em_, double ksi, double gammap_); //ksi= cos(theta_m)
-    void PrepareSSC();
+    void PreparePhotonField(char *);
     double proton_spectrum(double E_p_eV, double p_p, double E_cut_p);
   private:
     // double Ep = -1.0, gammap_ = -1.0; //energy and Lorentz factor of proton
@@ -50,37 +46,32 @@ class P01Pair:public P01Structures
 };
 
 P01Pair::P01Pair()
-{
-    // // perform normalization of the proton spectrum
-    // E2 = pow(energy_proton_min, -p_p + 1.0);
-    // E1 = pow(energy_proton_max, -p_p + 1.0);
-    // // normalization on one particle
-    // if (p_p != 1.0)
-    // {
-    //     C_p = (p_p - 1)/(pow(E_ref, p_p)*(E2 - E1));
-    // }
-    // else
-    // {
-    //     C_p = 1.0/(pow(E_ref, p_p)*log(energy_proton_max/energy_proton_min));
-    // }
-    // printf("C_p = %le [1/eV]\n", C_p);
-    for (size_t i = 0; i < SIZE_INDEPENDENT_ELECTRON_ENERGY; i++)
-    {
-        Eet[i]  = electron_independent_energy_min*pow(10.0, a_el_independent*i); //energy of final-state electron in lab. system [eV]
-        Ee[i]   = Eet[i]/me; //[eV]->[units of m_e]
-    }
-}
+{}
 
 P01Pair::~P01Pair()
 {}
 
-void P01Pair::PrepareSSC()
+void P01Pair::PreparePhotonField(char * file_path)
 {
     FILE * fd;
-    fd = fopen("/home/raylend/Science/agnprocesses/CMB_Kelner_BH_100.txt", "r");
+    FILE * fp;
+    fp = fopen("processes/c_codes/PhotoHadron/output/log", "a");
+    if (fp == NULL)
+    {
+        printf("Cannot create log!\n");
+    }
+    else
+    {
+        fprintf(fp, "Reading the following photon field:\n");
+        fputs(file_path, fp);
+        fprintf(fp, "\n");
+    }
+    fclose(fp);
+    //
+    fd = fopen(file_path, "r");
     if (fd == NULL)
     {
-        printf("Cannot open the file Data/...\n");
+        printf("Cannot open the file with photon field!\n");
         exit(1);
     }
     // for (int i = 0; i < SIZE_N_PHOTONS_SYNCHRO; i++)
@@ -91,10 +82,9 @@ void P01Pair::PrepareSSC()
         epsilon_synchro[i] /= me;
         nph_synchro[i] *= me;
         i++;
-        // nph_synchro[i] /= CENTIMETRE_CUBED; // cm^3 -> in units of me=c=1
     }
     fclose(fd);
-    printf("The photon field has been read successfully.\n");
+    printf("The photon field for BH process has been read successfully.\n");
     i = 0;
     for (int e = 0; e < SIZE_INDEPENDENT_ELECTRON_ENERGY; e++)
     {
@@ -102,20 +92,35 @@ void P01Pair::PrepareSSC()
     }
 }
 
-int P01Pair::Process()
+int P01Pair::Process(char * file_path, double energy_proton_min, double energy_proton_max, double p_p, double E_cut)
 {
     FILE * fd;
     double max = 0;
-    PrepareSSC();
+    PreparePhotonField(file_path);
     //
     double Ep[N_PROTON], gammap[N_PROTON];
-    for (size_t i = 0; i < N_PROTON; i++)
+    a_p = log10(energy_proton_max / energy_proton_min) / (double)N_PROTON;
+    for (int i = 0; i < N_PROTON; i++)
     {
         Ep[i] = energy_proton_min * pow(10.0, a_p*i);
         gammap[i] = Ep[i] / mp;
     }
+    //
+    //
+    //
+    electron_independent_energy_min = energy_proton_min;
+    electron_independent_energy_max = energy_proton_max;
+    a_el_independent = log10(electron_independent_energy_max/electron_independent_energy_min) / (double) SIZE_INDEPENDENT_ELECTRON_ENERGY;
+    for (int i = 0; i < SIZE_INDEPENDENT_ELECTRON_ENERGY; i++)
+    {
+        Eet[i]  = electron_independent_energy_min*pow(10.0, a_el_independent*i); //energy of final-state electron in lab. system [eV]
+        Ee[i]   = Eet[i]/me; //[eV]->[units of m_e]
+    }
+    //
+    //
+    //
     printf("Performing calculations of Bethe-Heitler electron-positron SED...\n");
-    printf("Done, %%:\n");
+    // printf("Done, %%:\n");
     for (int u = 1; u < N_PROTON; u++)
     {
         CalcSpectrum(gammap[u]);
@@ -124,9 +129,10 @@ int P01Pair::Process()
             SED_independent_final[e] += (Ep[u] - Ep[u-1]) * proton_spectrum(Ep[u], p_p, E_cut)*SED_independent[e];
         }
         // printf("\r");
-        printf("%2.1lf\n", (double)(u+1) / (double)N_PROTON * 100.0);
+        // printf("%2.1lf\n", (double)(u+1) / (double)N_PROTON * 100.0);
     }
-    fd = fopen("output/compare_with_Kelner_fig18.txt", "w");
+    printf("Done!\n");
+    fd = fopen("processes/c_codes/BHPairProduction/output/BH_SED.txt", "w");
     max = 0.0;
     for (int i = 0; i < SIZE_INDEPENDENT_ELECTRON_ENERGY; i++)
     {
@@ -150,19 +156,10 @@ int P01Pair::Process()
 int P01Pair::CalcSpectrum(double gammap_)
 {
     double t,Delta;
-    double dN;				//dN/dEe
+    double dN;	//dN/dEe
     FILE * fd;
     //
-    t = 1.0/(2.0*pow(gammap_,3.0));		//constant factor before the integral (see eq. (62) Kelner & Aharonian 2008)
-    // ect= k*T; //[eV]
-    // ect= 10.0; //[eV]
-    // ec= ect/me;					//kT/m
-    // t= ec/(2.0*pi*pi*pow(gammap_,3.0));		//constant factor before the integral --- to correct (!!)
-    // if (P01PairFlag>0)
-    // {
-    //   printf("ec= %13.6e [eV] %13.6e [units of m_e] t= %13.6e\n",
-    //   ect,ec,t);
-    // }
+    t = 1.0/(2.0*pow(gammap_,3.0));	//constant factor before the integral (see eq. (62) Kelner & Aharonian 2008)
     for (int i = 0; i < SIZE_INDEPENDENT_ELECTRON_ENERGY; i++)
     {
         //loop on final electron energy (lab. system) --- calculate spectrum (table!)
@@ -171,25 +168,6 @@ int P01Pair::CalcSpectrum(double gammap_)
         dN = t * Delta; //eq. (67) of Kelner and Aharonian
         SED_independent[i] = Ee[i]*Eet[i]*dN;			//SED
     }
-    // fd = fopen("output/planck_cross-check_3.0e+20eV_v31.txt", "w");
-    // double max = 0.0;
-    // for (int i = 0; i < SIZE_INDEPENDENT_ELECTRON_ENERGY; i++)
-    // {
-    //     if (max < SED_independent[i])
-    //     {
-    //         max = SED_independent[i];
-    //     }
-    // }
-    // for (int i = 0; i < SIZE_INDEPENDENT_ELECTRON_ENERGY; i++)
-    // {
-    //     Eet  = electron_independent_energy_min*pow(10.0, a_el_independent*i);		//energy of final-state electron in lab. system [eV]
-    //     if (SED_independent[i] > 1.0e-03*max)
-    //     {
-    //         // fprintf(fd, "%le %le\n", Eet, SED_independent[i]/max);	//(Ee,SED)
-    //         fprintf(fd, "%le %le\n", Eet, SED_independent[i]);	//(Ee,SED)
-    //     }
-    // }
-    // fclose(fd);
     return(0);
 }
 

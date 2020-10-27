@@ -14,3 +14,6 @@ processes/c_codes/PhotoHadron/Neutrino
 *.o
 *.so
 processes/pgamma-log
+processes/bh-log
+processes/c_codes/BHPairProduction/input/*
+processes/c_codes/BHPairProduction/output/*
