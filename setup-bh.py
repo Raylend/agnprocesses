@@ -7,8 +7,8 @@ cmdout = subprocess.check_output(cmd, shell=True)[:-1].decode('utf-8')
 module = Extension(
     "bh_ext",
     sources=['processes/c_codes/BHPairProduction/bh.cpp'],
-    library_dirs=[cmdout],
-    # '/home/raylend/Science/agnprocesses/bin/shared'],
+    # library_dirs=[cmdout],
+    library_dirs=['/home/raylend/Science/agnprocesses/bin/shared'],
     libraries=['BetheHeitler']
 )
 

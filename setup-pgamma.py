@@ -7,8 +7,8 @@ cmdout = subprocess.check_output(cmd, shell=True)[:-1].decode('utf-8')
 module = Extension(
     "pgamma_ext",
     sources=['processes/c_codes/PhotoHadron/pgamma.cpp'],
-    library_dirs=[cmdout],
-    # '/home/raylend/Science/agnprocesses/bin/shared'],
+    # library_dirs=[cmdout],
+    library_dirs=['/home/raylend/Science/agnprocesses/bin/shared'],
     libraries=['PhotoHadron']
 )
 
