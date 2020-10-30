@@ -181,6 +181,57 @@ def derishev_synchro_spec(
     return f
 
 
+def derishev_synchro_table(
+    nu,
+    electron,
+    b=1.0 * u.G,
+    electron_energy_unit=u.eV,
+    electron_sed_unit=u.eV / (u.cm**2 * u.s),
+    number_of_integration=100,
+    particle_mass=const.m_e.cgs,
+    particle_charge=const.e.gauss
+):
+    """
+    nu is the independent variable, frequency
+    b is the magnetic field strength
+    norm is the normalization coefficient of charged particles
+
+    electron is the 2 column table with electron energy and sed or a path to
+    the .txt file with it. The first column is electron energy in
+    electron_energy_unit, the second column is the SED in electron_sed_unit
+    """
+    ############################################################################
+    # electron table
+    if type(electron) == type(''):
+        try:
+            electron = np.loadtxt(electron)
+        except:
+            raise ValueError(
+                "Cannot read 'electron'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / SED).\nTry to use an absolute path.")
+    elif type(electron) == type(np.array(([2, 1], [5, 6]))):
+        pass
+    else:
+        raise ValueError(
+            "Invalid value of 'electron'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / sed).")
+    ############################################################################
+    ee = electron[:, 0] * electron_energy_unit
+    dn_de = electron[:, 1] / electron[:, 0]**2  # SED -> dN/dE
+    y = np.array(list(map(
+        lambda i: (derishev(nu, ee[i], b=b,
+                            particle_mass=particle_mass,
+                            particle_charge=particle_charge)).value * dn_de[i],
+        range(0, ee.shape[0])
+    )))
+    f = np.array(list(map(
+        lambda i: simps(y[:, i].reshape(ee.shape), ee.value),
+        range(0, nu.shape[0])))) * derishev(
+            nu, ee[0], b=b,
+            particle_mass=particle_mass,
+            particle_charge=particle_charge).unit * electron_sed_unit / \
+        ee[0].unit
+    return f
+
+
 def test():
     print("synchro.py imported successfully.")
     return None
