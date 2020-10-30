@@ -171,6 +171,34 @@ def summ_spectra(e1, s1, e2, s2, nbin=100):
     return((e, s))
 
 
+def create_2column_table(col1, col2):
+    """
+    Creates a 2 column table as a numpy array with shape
+    (np.max(col1.shape), 2). col2 must have the same shape as col1.
+    Mind that if col1 or col2 are astropy Quantities they will be converted
+    to their values, their units will be lost!
+    """
+    if col1.shape != col2.shape:
+        raise ValueError("col1 and col2 must have the same shapes!")
+    try:
+        col1 = col1.value
+        print("col1 has '{}' astropy Quantity unit".format(col1.unit))
+    except AttributeError:
+        pass
+    try:
+        col2 = col2.value
+        print("col2 has '{}' astropy Quantity unit".format(col2.unit))
+    except AttributeError:
+        pass
+    n = np.max(col1.shape)
+    table = np.concatenate(
+        (col1.reshape(n, 1),
+         col2.reshape(n, 1)),
+        axis=1
+    )
+    return table
+
+
 def test():
     print("spectra.py imported successfully.")
     return None
