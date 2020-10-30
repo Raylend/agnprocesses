@@ -8,14 +8,10 @@ test_figures/*
 processes/c_codes/PhotoHadron/Data/*
 processes/c_codes/PhotoHadron/input/*
 processes/c_codes/PhotoHadron/output/*
-processes/c_codes/PhotoHadron/Active
-processes/c_codes/PhotoHadron/Neutrino
 *.pyc
 *.o
 *.so
-processes/pgamma-log
-processes/bh-log
-processes/gamma_gamma-log
+processes/logs/*
 processes/c_codes/BHPairProduction/input/*
 processes/c_codes/BHPairProduction/output/*
 processes/c_codes/GammaGammaPairProduction/input/*

@@ -76,7 +76,7 @@ def derishev_synchro_spec(
     particle_charge=const.e.gauss
 ):
     """
-    nu is the independent variable, frequency
+    nu is the independent variable, frequency in Hz (1/s)
     b is the magnetic field strength
     norm is the normalization coefficient of charged particles
 
@@ -192,7 +192,7 @@ def derishev_synchro_table(
     particle_charge=const.e.gauss
 ):
     """
-    nu is the independent variable, frequency
+    nu is the independent variable, frequency in Hz (1/s)
     b is the magnetic field strength
     norm is the normalization coefficient of charged particles
 

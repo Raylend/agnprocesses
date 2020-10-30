@@ -17,6 +17,7 @@ import processes.spectra as spec
 import processes.pgamma as pgamma
 import processes.bh as bh
 import processes.gamma_gamma as gamma_gamma
+import processes.ebl as ebl
 ###############################################################################
 from astropy import units as u
 from astropy import constants as const
@@ -137,6 +138,35 @@ if __name__ == '__main__':
     helectron_sed = x[3]
     hgamma_e = x[4]
     hgamma_sed = x[5]
+    ###########################################################################
+    # The first hadron synchro
+    first_hadron_electron = spec.create_2column_table(helectron_e,
+                                                      helectron_sed)
+    first_synchro_e = np.logspace(7.0, 12.0, 100) * u.eV
+    nu_first_synchro = (first_synchro_e / const.h).to(u.Hz)
+    first_synchro_spec = synchro.derishev_synchro_table(
+        nu_first_synchro,
+        first_hadron_electron,
+        b=b,
+        electron_energy_unit=helectron_e.unit,
+        electron_sed_unit=helectron_sed.unit,
+        number_of_integration=100,
+        particle_mass=const.m_e.cgs,
+        particle_charge=const.e.gauss
+    )
+    y = ((const.h * nu_first_synchro).to(u.eV) * first_synchro_spec)
+    x = first_synchro_e
+    first_synchro_full_energy = simps(y.value,
+                                      x.value) * y.unit * x.unit
+    helectron_full_energy = simps((helectron_sed / helectron_e).value,
+                                  helectron_e.value) * helectron_sed.unit
+    t_cool0 = helectron_full_energy / first_synchro_full_energy
+    first_synchro_full_energy = first_synchro_full_energy * t_cool0
+    first_synchro_sed = first_synchro_e**2 * first_synchro_spec
+    first_synchro_e = first_synchro_e * doppler / (1.0 + z)
+    first_synchro_sed = first_synchro_sed * \
+        doppler**4 / (4.0 * np.pi * d_l**2)
+    first_synchro_sed = first_synchro_sed * t_cool0
     ###########################################################################
     # Hadron gamma-gamma pairs
     gamma = np.concatenate(
@@ -277,11 +307,17 @@ if __name__ == '__main__':
     E_neu_average_long = np.ones((50, 1)) * E_neu_med
     ###########################################################################
     ###########################################################################
-
-    ###########################################################################
     # Summ
     summ_e, summ_sed = spec.summ_spectra(synchro_e, synchro_sed,
                                          bh_synchro_e, bh_synchro_sed)
+    summ_e, summ_sed = spec.summ_spectra(summ_e, summ_sed,
+                                         second_synchro_e, second_synchro_sed)
+    summ_e, summ_sed = spec.summ_spectra(summ_e, summ_sed,
+                                         first_synchro_e, first_synchro_sed)
+    summ_sed = summ_sed * np.exp(-ebl.tau_gilmore(summ_e, z))
+    summ_filter = (summ_e < 2.0 * u.TeV)
+    summ_e = summ_e[summ_filter]
+    summ_sed = summ_sed[summ_filter]
     ###########################################################################
     # fig = plt.figure(figsize=(8, 6))
     # ax = fig.add_subplot(1, 1, 1)
@@ -342,6 +378,14 @@ if __name__ == '__main__':
         linestyle='--',
         # color='g',
         label='BH synchrotron'
+    )
+    plt.plot(
+        first_synchro_e, first_synchro_sed,
+        marker=None,
+        linewidth=3,
+        linestyle='--',
+        # color='g',
+        label='hadron electron synchrotron'
     )
     plt.plot(
         second_synchro_e, second_synchro_sed,
