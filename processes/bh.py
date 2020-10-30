@@ -24,7 +24,7 @@ except:
 
 def bh_install(dev_mode=True):
     try:
-        with open('processes/bh-log', mode='r') as f:
+        with open('processes/logs/bh-log', mode='r') as f:
             bh_install_flag = int(f.read(1))
             f.close()
     except:
@@ -53,7 +53,7 @@ def bh_install(dev_mode=True):
         print('Done!')
         # %% 4. Completed
         print("4.Installation of Bethe-Heitler pair production library completed.")
-        with open('processes/bh-log', mode='w') as f:
+        with open('processes/logs/bh-log', mode='w') as f:
             f.write('1')
             f.close()
     else:

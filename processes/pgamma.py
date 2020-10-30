@@ -21,7 +21,7 @@ except:
 
 def pgamma_install(dev_mode=True):
     try:
-        with open('processes/pgamma-log', mode='r') as f:
+        with open('processes/logs/pgamma-log', mode='r') as f:
             pgamma_install_flag = int(f.read(1))
             f.close()
     except:
@@ -51,7 +51,7 @@ def pgamma_install(dev_mode=True):
         print('Done!')
         # %% 4. Completed
         print("4.Installation of photohadron (pgamma) meson production secondaries library completed.")
-        with open('processes/pgamma-log', mode='w') as f:
+        with open('processes/logs/pgamma-log', mode='w') as f:
             f.write('1')
             f.close()
     else:
