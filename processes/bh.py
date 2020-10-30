@@ -94,7 +94,7 @@ def kelner_bh_calculate(field,
     C_p is the normalization coefficient of the proton spectrum.
 
     Returns a tuple with electron + positron energy in
-    eV and SED in (eV * cm**3 * s)**(-1) as array-like astropy Quantities.
+    eV and SED in eV * s**(-1) as array-like astropy Quantities.
     """
     try:
         energy_coef = background_photon_energy_unit.to(u.eV) / (1.0 * u.eV)
@@ -122,7 +122,7 @@ def kelner_bh_calculate(field,
             "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
     if field[:, 0].shape[0] > 100:
         raise NotImplementedError(
-            "field should contain no more than 100 strings (raws)! (more strings will be implemented in future)")
+            "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)")
     proton_target_path = 'processes/c_codes/BHPairProduction/input/field.txt'
     np.savetxt(proton_target_path, field, fmt='%.6e')
     ###########################################################################
@@ -154,7 +154,7 @@ def kelner_bh_calculate(field,
     pair = np.loadtxt(
         'processes/c_codes/BHPairProduction/output/BH_SED.txt')
     pair_e = pair[:, 0] * u.eV
-    pair_sed = pair[:, 1] * (u.eV * u.cm**(-3) * u.s**(-1))
+    pair_sed = pair[:, 1] * (u.eV * u.s**(-1))
     pair_sed = pair_sed * C_p / (1.0 / u.eV)
     return (pair_e, pair_sed)
 
