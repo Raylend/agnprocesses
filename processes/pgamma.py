@@ -89,7 +89,7 @@ def kelner_pgamma_calculate(field,
     C_p is the normalization coefficient of the proton spectrum.
 
     Returns tuple of 6 array-like atropy Quantities:
-    particle energy in eV and its SED in eV / (cm**3 s) (3 pairs).
+    particle energy in eV and its SED in eV / s (3 pairs).
     The order is the following: neutrinos, electrons, gamma-rays.
 
     Neutrinos are considered as summ of particles and antiparticles
@@ -154,19 +154,19 @@ def kelner_pgamma_calculate(field,
     neutrino = np.loadtxt(
         'processes/c_codes/PhotoHadron/output/neutrino_SED.txt')
     neutrino_e = neutrino[:, 0] * u.eV
-    neutrino_sed = neutrino[:, 1] * (u.eV * u.cm**(-3) * u.s**(-1))
+    neutrino_sed = neutrino[:, 1] * (u.eV * u.s**(-1))
     neutrino_sed = neutrino_sed * C_p / (1.0 / u.eV)
     ###########################################################################
     electron = np.loadtxt(
         'processes/c_codes/PhotoHadron/output/electron_SED.txt')
     electron_e = electron[:, 0] * u.eV
-    electron_sed = electron[:, 1] * (u.eV * u.cm**(-3) * u.s**(-1))
+    electron_sed = electron[:, 1] * (u.eV * u.s**(-1))
     electron_sed = electron_sed * C_p / (1.0 / u.eV)
     ###########################################################################
     gamma = np.loadtxt(
         'processes/c_codes/PhotoHadron/output/gamma_SED.txt')
     gamma_e = gamma[:, 0] * u.eV
-    gamma_sed = gamma[:, 1] * (u.eV * u.cm**(-3) * u.s**(-1))
+    gamma_sed = gamma[:, 1] * (u.eV * u.s**(-1))
     gamma_sed = gamma_sed * C_p / (1.0 / u.eV)
     ###########################################################################
     return (neutrino_e, neutrino_sed,
