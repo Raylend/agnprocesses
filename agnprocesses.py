@@ -15,6 +15,8 @@ import processes.synchro as synchro
 import processes.ic as ic
 import processes.spectra as spec
 import processes.pgamma as pgamma
+import processes.bh as bh
+import processes.gamma_gamma as gamma_gamma
 ###############################################################################
 from astropy import units as u
 from astropy import constants as const
@@ -29,38 +31,38 @@ from scipy.integrate import simps
 
 
 if __name__ == '__main__':
-    # en_cmb = np.logspace(-11, -2, 100) * u.eV
-    # grey = spec.greybody_spectrum(en_cmb, 2.7 * u.K)
-    # field3 = np.concatenate((en_cmb.value.reshape(en_cmb.shape[0], 1),
-    #                          grey.value.reshape(grey.shape[0], 1)),
-    #                         axis=1)
-    # np.savetxt('CMB_Kelner_BH_100.txt', field3, fmt='%.6e')
-    ###########################################################################
-    # pgamma.pgamma_install()
-    # import pgamma_ext
-    eta0 = 0.313
-    m_p = const.m_p.to(u.eV, u.mass_energy())
-    print("m_p = {:.6e}".format(m_p))
-    E_star = m_p * (m_p / (4.0 * const.k_B * 2.7 * u.K).to(u.eV)) * eta0
-    print("E_star = {:.6e}".format(E_star))
-    ###########################################################################
-    # Repeat the SSC model from the Stability apply supplement file
+    # Repeat the external photon field model vAPR47
+    # Geometry
+    doppler = 30.0
+    Gamma = doppler / 2.0
+    r_b = 1.0e+17 * u.cm
     z = 0.3365
     d_l = cosmology.luminosity_distance(z).to(u.cm)
     print("d_l = {:.6e}".format(d_l))
-    norm_e = 1.9e+40 * u.eV**(-1) * 0.6
-    gamma1 = 1.9  # 1.69  #
-    gamma2 = 4.5  # 4.29  #
-    e_br = 9.0 * u.GeV * np.sqrt((1 + z)**3) * 0.8
-    e_min_e = 5.0e+06 * u.eV  # 10.0**1.33 * (const.m_e * const.c**2).to(u.eV)
-    e_max_e = 1.0e+12 * u.eV  # 10.0**6.82 * (const.m_e * const.c**2).to(u.eV)
-    e_e = np.logspace(np.log10(e_min_e.value),
-                      np.log10(e_max_e.value), 100) * u.eV
-    doppler = 30.0  # 2.0 * 10.0**1.43
-    r_b = 1.0e+17 * u.cm  # 10.0**16.46 * u.cm  #
-    b = 0.05 * u.g**0.5 * u.cm**(-0.5) * u.s**(-1) / \
-        ((1 + z)**3) * 1.5  # 10.0**(-1.01) * u.G  #
+    b = 69.0 * u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
     print("B = {:.6e}".format(b))
+    ############################################################################
+    # External photon field
+    en_ext = np.logspace(np.log10(1.33), np.log10(10.0), 100) * u.eV
+    en_ext_blob = 4.0 / 3.0 * Gamma * en_ext
+    boost = 2.0 * 4.0 / 3.0 * Gamma**2
+    alpha = 2.0
+    K = 3e+03 / (u.eV * u.cm**3)
+    n_ext = spec.power_law(en_ext, alpha, norm=K)
+    n_ext_blob = n_ext * boost
+    field_ext = np.concatenate(
+        (en_ext_blob.value.reshape(en_ext_blob.shape[0], 1),
+         n_ext_blob.value.reshape(n_ext_blob.shape[0], 1)),
+        axis=1)
+    ############################################################################
+    norm_e = 3.8e+38 * u.eV**(-1)
+    gamma1 = 1.9
+    gamma2 = 4.3
+    e_br = 2.0e+08 * u.eV
+    e_min_e = 5.0e+06 * u.eV
+    e_max_e = 1.0e+12 * u.eV
+    e_e = np.logspace(np.log10(e_min_e.to(u.eV).value),
+                      np.log10(e_max_e.to(u.eV).value), 100) * u.eV
     ###########################################################################
     # synchrotron
     nu = np.logspace(7, 19, 100) * u.Hz
@@ -81,14 +83,9 @@ if __name__ == '__main__':
     synchro_sed = synchro_sed * doppler**4 / (4.0 * np.pi * d_l**2)
     ###########################################################################
     # IC
-    field = np.concatenate(
-        (synchro_epsilon.value.reshape(synchro_epsilon.shape[0], 1),
-         synchro_density.value.reshape(synchro_density.shape[0], 1)),
-        axis=1
-    )
     ic_e = np.logspace(0, 11.5, 100) * u.eV
     ic_spec = ic.inverse_compton_spec(ic_e,
-                                      field,
+                                      field_ext,
                                       norm=norm_e,
                                       spec_law='broken_power_law',
                                       gamma1=gamma1,
@@ -96,8 +93,8 @@ if __name__ == '__main__':
                                       en_break=e_br,
                                       en_min=e_min_e,
                                       en_max=e_max_e,
-                                      background_photon_energy_unit=synchro_epsilon.unit,
-                                      background_photon_density_unit=synchro_density.unit)
+                                      background_photon_energy_unit=en_ext_blob.unit,
+                                      background_photon_density_unit=n_ext_blob.unit)
     ic_sed = ic_e**2 * ic_spec
     ic_e *= doppler / (1.0 + z)
     ic_sed *= doppler**4 / (4.0 * np.pi * d_l**2)
@@ -106,31 +103,14 @@ if __name__ == '__main__':
     summ_e, summ_sed = spec.summ_spectra(synchro_e, synchro_sed, ic_e, ic_sed,
                                          nbin=100)
     ###########################################################################
-    # proton target is the comptonized synchrotron (SSC) photon fields according to Troitsky
-    # proton_target_e = ic_e / doppler * (1.0 + z)
-    # proton_target_spec = ic_spec / (4.0 / 3.0 * np.pi * r_b**2 * const.c.to(
-    #     u.cm / u.s)
-    # )
-    proton_target_e = summ_e / doppler * (1 + z)
-    proton_target_spec = summ_sed / doppler**4 * (4.0 * np.pi * d_l**2)
-    proton_target_spec = proton_target_spec / proton_target_e**2
-    proton_target_spec = proton_target_spec / (4.0 / 3.0 * np.pi * r_b**2 *
-                                               const.c.to(u.cm / u.s))
-    proton_target = np.concatenate(
-        (proton_target_e.value.reshape(proton_target_e.shape[0], 1),
-         proton_target_spec.value.reshape(proton_target_spec.shape[0], 1)),
-        axis=1
-    )
-    # proton_target_path = 'processes/c_codes/PhotoHadron/input/Troitsky_proton_target.txt'
-    # np.savetxt(proton_target_path, proton_target, fmt='%.6e')
-    energy_proton_min = 10.0 * u.TeV
-    energy_proton_max = 6.0 * u.PeV
+    energy_proton_min = 1.0e+14 * u.eV  # 3.0e+14 * u.eV
+    energy_proton_max = 6.0e+14 * u.eV
     en_p = energy_proton_min.unit * \
-        np.logspace(np.log10(energy_proton_min.value),
-                    np.log10(energy_proton_max.value),
+        np.logspace(np.log10(energy_proton_min.to(u.eV).value),
+                    np.log10(energy_proton_max.to(u.eV).value),
                     100)
     p_p = 2.0
-    C_p = 1.0e+11 * u.eV**(-1) * (4.0 * np.pi * d_l**2).value
+    C_p = 1.5e+66 / 6.0 * u.eV**(-1)
     print("C_p = {:.6e}".format(C_p))
     ###########################################################################
     proton_spectrum = spec.power_law(en_p, p_p, norm=C_p, en_ref=1.0 * u.eV)
@@ -141,33 +121,131 @@ if __name__ == '__main__':
     u_p = u_p.to(u.erg / u.cm**3)
     print("proton energy density in the blob = {:.6e}".format(u_p))
     L_p = np.pi * r_b**2 * const.c.cgs * (doppler / 2.0)**2 * u_p
-    print("observable proton luminosity = {:.6e}".format(L_p))
+    print("observable proton luminosity in the lab frame = {:.6e}".format(L_p))
     u_b = (b**2 / (8.0 * np.pi)).to(u.erg / u.cm**3)
     print("magnetic field density in the blob = {:.6e}".format(u_b))
     ###########################################################################
-    # pgamma_ext.pgamma(proton_target_path,
-    #                   energy_proton_min.value,
-    #                   energy_proton_max.value,
-    #                   p_p, -1)
-    neutrino_e, neutrino_sed, _, _, _, _ = \
-        pgamma.kelner_pgamma_calculate(proton_target,
+    # PhotoHadron process
+    x = pgamma.kelner_pgamma_calculate(field_ext,
                                        energy_proton_min,
                                        energy_proton_max,
                                        p_p, e_cut_p=-1,
                                        C_p=C_p)
-    # neutrino_e = x[0]
-    # neutrino_sed = x[1]
-    # neutrino = np.loadtxt(
-    #     'processes/c_codes/PhotoHadron/output/neutrino_SED.txt')
-    neutrino_e = neutrino_e * doppler / (1.0 + z)
-    neutrino_sed = neutrino_sed * doppler**4 / (1.0 + z)
-    neutrino_sed = neutrino_sed / (4.0 * np.pi * d_l**2)
+    neutrino_e = x[0]
+    neutrino_sed = x[1]
+    helectron_e = x[2]
+    helectron_sed = x[3]
+    hgamma_e = x[4]
+    hgamma_sed = x[5]
     ###########################################################################
-    neutrino2 = np.loadtxt(
-        'processes/c_codes/PhotoHadron/output/neutrino_SED_comptonized_synchro.txt')
-    neutrino2_e = neutrino2[:, 0] * doppler / (1.0 + z)
-    neutrino2_sed = neutrino2[:, 1] * doppler**4 / (1.0 + z)
-    neutrino2_sed = neutrino2_sed * C_p / (4.0 * np.pi * d_l**2)
+    # Hadron gamma-gamma pairs
+    gamma = np.concatenate(
+        (hgamma_e.value.reshape(hgamma_e.shape[0], 1),
+         hgamma_sed.value.reshape(hgamma_sed.shape[0], 1)),
+        axis=1
+    )
+    # External photon field
+    en_ext2 = np.logspace(np.log10(1.33), np.log10(10.0), 1000) * u.eV
+    en_ext_blob2 = 4.0 / 3.0 * Gamma * en_ext2
+    boost = 2.0 * 4.0 / 3.0 * Gamma**2
+    alpha = 2.0
+    K = 3e+03 / (u.eV * u.cm**3)
+    n_ext2 = spec.power_law(en_ext2, alpha, norm=K)
+    n_ext_blob2 = n_ext2 * boost
+    field_ext2 = np.concatenate(
+        (en_ext_blob2.value.reshape(en_ext_blob2.shape[0], 1),
+         n_ext_blob2.value.reshape(n_ext_blob2.shape[0], 1)),
+        axis=1)
+    hadpair_e, hadpair_sed = gamma_gamma.pair_production(
+        field_ext2,
+        gamma,
+        background_photon_energy_unit=en_ext_blob.unit,
+        background_photon_density_unit=n_ext_blob.unit,
+        gamma_energy_unit=hgamma_e.unit,
+        gamma_sed_unit=hgamma_sed.unit)
+    second_electron = np.concatenate(
+        (hadpair_e.value.reshape(hadpair_e.shape[0], 1),
+         hadpair_sed.value.reshape(hadpair_sed.shape[0], 1)),
+        axis=1)
+    second_synchro_e = np.logspace(5.0, 12.0, 100) * u.eV
+    nu_second_synchro = (second_synchro_e / const.h).to(u.Hz)
+    second_synchro_spec = synchro.derishev_synchro_table(
+        nu_second_synchro,
+        second_electron,
+        b=b,
+        electron_energy_unit=hadpair_e.unit,
+        electron_sed_unit=hadpair_sed.unit,
+        number_of_integration=100,
+        particle_mass=const.m_e.cgs,
+        particle_charge=const.e.gauss
+    )
+    y = ((const.h * nu_second_synchro).to(u.eV) * second_synchro_spec)
+    x = second_synchro_e
+    second_synchro_full_energy = simps(y.value,
+                                       x.value) * y.unit * x.unit
+    hadpair_full_energy = simps((hadpair_sed / hadpair_e).value,
+                                hadpair_e.value) * hadpair_sed.unit
+    t_cool2 = hadpair_full_energy / second_synchro_full_energy
+    second_synchro_full_energy = second_synchro_full_energy * t_cool2
+    second_synchro_sed = second_synchro_e**2 * second_synchro_spec
+    second_synchro_e = second_synchro_e * doppler / (1.0 + z)
+    second_synchro_sed = second_synchro_sed * \
+        doppler**4 / (4.0 * np.pi * d_l**2)
+    second_synchro_sed = second_synchro_sed * t_cool2
+    ###########################################################################
+    hadpair_e = hadpair_e * doppler / (1.0 + z)
+    hadpair_sed = hadpair_sed * doppler**4 / (4.0 * np.pi * d_l**2)
+    ###########################################################################
+    neutrino_e = neutrino_e * doppler / (1.0 + z)
+    neutrino_sed = neutrino_sed * doppler**4 / (4.0 * np.pi * d_l**2)
+    helectron_e = helectron_e * doppler / (1.0 + z)
+    helectron_sed = helectron_sed * doppler**4 / (4.0 * np.pi * d_l**2)
+    hgamma_e = hgamma_e * doppler / (1.0 + z)
+    hgamma_sed = hgamma_sed * doppler**4 / (4.0 * np.pi * d_l**2)
+    ###########################################################################
+    # Bethe-Heitler process
+    bh_pair_e, bh_pair_sed = bh.kelner_bh_calculate(field_ext,
+                                                    energy_proton_min,
+                                                    energy_proton_max,
+                                                    p_p, e_cut_p=-1,
+                                                    C_p=C_p)
+    electron = np.concatenate(
+        (bh_pair_e.value.reshape(bh_pair_e.shape[0], 1),
+         bh_pair_sed.value.reshape(bh_pair_sed.shape[0], 1)),
+        axis=1
+    )
+    # BH synchro
+    nu_bh = (np.logspace(0.5, 12.0, 100) * u.eV / const.h).to(u.Hz)
+    bh_synchro_spec = synchro.derishev_synchro_table(
+        nu_bh,
+        electron,
+        b=b,
+        electron_energy_unit=bh_pair_e.unit,
+        electron_sed_unit=bh_pair_sed.unit,
+        number_of_integration=100,
+        particle_mass=const.m_e.cgs,
+        particle_charge=const.e.gauss
+    )
+    y = ((const.h * nu_bh).to(u.eV) * bh_synchro_spec)
+    x = (const.h * nu_bh).to(u.eV)
+    bh_synchro_full_energy = simps(y.value,
+                                   x.value) * y.unit * x.unit
+    bh_pair_full_energy = simps((bh_pair_sed / bh_pair_e).value,
+                                bh_pair_e.value) * bh_pair_sed.unit
+    t_cool = bh_pair_full_energy / bh_synchro_full_energy
+    bh_synchro_full_energy = bh_synchro_full_energy * t_cool
+    print("t_cool = {:.2e}".format(t_cool))
+    print("bh_synchro_full_energy = {:.2e}".format(bh_synchro_full_energy))
+    print("bh_pair_full_energy = {:.2e}".format(bh_pair_full_energy))
+    bh_pair_e = bh_pair_e * doppler / (1.0 + z)
+    bh_pair_sed = bh_pair_sed * doppler**4 / (4.0 * np.pi * d_l**2)
+    print("bh_pair_sed.unit = {}".format(bh_pair_sed.unit))
+    bh_synchro_e = (nu_bh * const.h).to(u.eV)
+    bh_synchro_sed = bh_synchro_spec * bh_synchro_e**2
+    bh_synchro_e = bh_synchro_e * doppler / (1.0 + z)
+    bh_synchro_sed = bh_synchro_sed * doppler**4 / (4.0 * np.pi * d_l**2)
+    bh_synchro_sed = bh_synchro_sed * t_cool
+    print("bh_synchro_sed.unit = {}".format(bh_synchro_sed.unit))
     ###########################################################################
     # Data from Science: gamma-rays
     data = np.loadtxt(
@@ -198,9 +276,12 @@ if __name__ == '__main__':
                                      np.log10(C_neu_max.value)) * C_neu_min.unit
     E_neu_average_long = np.ones((50, 1)) * E_neu_med
     ###########################################################################
-    # Compare with C code IC
-    # c = np.loadtxt(
-    # '/home/raylend/Science/agnprocesses/test_figures/IC_Khangulian_scilab/IC_Khangulian_scilab_CMB.txt')
+    ###########################################################################
+
+    ###########################################################################
+    # Summ
+    summ_e, summ_sed = spec.summ_spectra(synchro_e, synchro_sed,
+                                         bh_synchro_e, bh_synchro_sed)
     ###########################################################################
     # fig = plt.figure(figsize=(8, 6))
     # ax = fig.add_subplot(1, 1, 1)
@@ -214,29 +295,70 @@ if __name__ == '__main__':
         color='k',
         label='summ'
     )
-    # plt.plot(
-    #     c[:, 0], c[:, 1],
-    #     marker=None,
-    #     linestyle='--',
-    #     linewidth=3,
-    #     color='g',
-    #     label='scilab'
-    # )
     plt.plot(
         synchro_e, synchro_sed,
         marker=None,
         linestyle='--',
         linewidth=3,
-        color='r',
+        # color='r',
         label='synchrotron without SSA'
     )
+    # plt.plot(
+    #     ic_e, ic_sed,
+    #     marker=None,
+    #     linewidth=3,
+    #     linestyle='--',
+    #     # color='b',
+    #     label='EC'
+    # )
     plt.plot(
-        ic_e, ic_sed,
+        bh_pair_e, bh_pair_sed,
+        marker=None,
+        linewidth=3,
+        linestyle=':',
+        # color='g',
+        label='BH electrons'
+    )
+    plt.plot(
+        helectron_e, helectron_sed,
+        marker=None,
+        linewidth=3,
+        linestyle=':',
+        # color='g',
+        label='PhotoHadron electrons'
+    )
+    plt.plot(
+        hgamma_e, hgamma_sed,
         marker=None,
         linewidth=3,
         linestyle='--',
-        color='b',
-        label='SSC'
+        # color='g',
+        label='PhotoHadron gamma-rays'
+    )
+    plt.plot(
+        bh_synchro_e, bh_synchro_sed,
+        marker=None,
+        linewidth=3,
+        linestyle='--',
+        # color='g',
+        label='BH synchrotron'
+    )
+    plt.plot(
+        second_synchro_e, second_synchro_sed,
+        marker=None,
+        linewidth=3,
+        linestyle='--',
+        # color='g',
+        label='hadron second generation synchrotron'
+    )
+    plt.plot(
+        hadpair_e, hadpair_sed,
+        marker=None,
+        linestyle=':',
+        linewidth=3,
+        # color='g',
+        label='hadron second generation electrons',
+        zorder=1000
     )
     plt.errorbar(data_en, data_sed,
                  yerr=yerr, xerr=None, fmt='o', linewidth=0, elinewidth=2,
@@ -246,16 +368,17 @@ if __name__ == '__main__':
         neutrino_e, neutrino_sed,
         marker=None,
         linewidth=3,
-        color='c',
+        # color='c',
         linestyle='-.',
-        label='muon and antimuon neutrino'
+        label='PhotoHadron muon and antimuon neutrino'
     )
     plt.plot(
         E_neu_med, science_flare_neutrino_intensity,
         color='m',
         marker='s',
         markersize=5,
-        linewidth=0
+        linewidth=0,
+        label='IceCube measurement'
     )
     plt.plot(
         E_neu_average_long, C_neu_min_max_long,
@@ -269,16 +392,6 @@ if __name__ == '__main__':
         linestyle='-',
         color='m'
     )
-    plt.plot(
-        neutrino2_e, neutrino2_sed,
-        marker=None,
-        linewidth=3,
-        color='g',
-        linestyle=':',
-        label='2'
-    )
-    # plt.xscale("log")
-    # plt.yscale("log")
     plt.xlabel('energy, ' + str(ic_e.unit), fontsize=18)
     plt.xticks(fontsize=12)
     plt.ylabel('SED, ' + str(ic_sed.unit), fontsize=18)

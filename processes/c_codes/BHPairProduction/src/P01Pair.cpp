@@ -4,7 +4,7 @@
 #define SIZE_INTERNAL_INTEGRAL_ELECTRON_ENERGY 50
 #define SIZE_OMEGA 50
 #define KELNER_KOEFFICIENT 51589733910.0 / 1.21
-#define N_PROTON 50
+#define N_PROTON 30
 #define PROTON_REST_ENERGY 9.38272e+08 // eV
 
 class P01Pair:public P01Structures
@@ -108,7 +108,7 @@ int P01Pair::Process(char * file_path, double energy_proton_min, double energy_p
     //
     //
     //
-    electron_independent_energy_min = energy_proton_min;
+    electron_independent_energy_min = energy_proton_min * 1.0e-06;
     electron_independent_energy_max = energy_proton_max;
     a_el_independent = log10(electron_independent_energy_max/electron_independent_energy_min) / (double) SIZE_INDEPENDENT_ELECTRON_ENERGY;
     for (int i = 0; i < SIZE_INDEPENDENT_ELECTRON_ENERGY; i++)

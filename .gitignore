@@ -15,5 +15,8 @@ processes/c_codes/PhotoHadron/Neutrino
 *.so
 processes/pgamma-log
 processes/bh-log
+processes/gamma_gamma-log
 processes/c_codes/BHPairProduction/input/*
 processes/c_codes/BHPairProduction/output/*
+processes/c_codes/GammaGammaPairProduction/input/*
+processes/c_codes/GammaGammaPairProduction/output/*
