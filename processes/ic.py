@@ -172,7 +172,7 @@ def inverse_compton_spec(
     en_min=None,
     en_max=None,
     en_mono=None,
-    en_ref=1.0,
+    en_ref=1.0 * u.eV,
     number_of_integration=100,
     particle_mass=const.m_e.cgs,
     particle_charge=const.e.gauss,

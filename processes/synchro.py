@@ -30,6 +30,10 @@ def derishev(
     particle_charge=const.e.gauss
 ):
     particle_mass = particle_mass.to(u.g, u.mass_energy())
+    try:
+        b = b.to(u.G)
+    except:
+        raise ValueError("Magnetic field strength must be in gauss units!")
     if b.unit == u.G:
         b = b.value * u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
@@ -70,7 +74,7 @@ def derishev_synchro_spec(
     en_min=None,
     en_max=None,
     en_mono=None,
-    en_ref=1.0,
+    en_ref=1.0 * u.eV,
     number_of_integration=100,
     particle_mass=const.m_e.cgs,
     particle_charge=const.e.gauss
