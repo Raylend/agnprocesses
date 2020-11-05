@@ -38,3 +38,6 @@ and then clone this repository.
 All operations are to be done in a separate .py file. See main.py file as an example of the SSC (synchrotron self Compton) model.
 
 * (optional) If you want to use hadronic part of agnprocesses, uncomment 'import processes.pgamma as pgamma', 'import processes.bh as bh', 'import processes.gamma_gamma as gamma_gamma' to use these modules. In such a case see (optional) instructions above.
+
+## Recommendations
+If you still do not have your favorite code editor I recoomend to install Atom. It can be installed using software center in Ubuntu distribution.
