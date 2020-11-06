@@ -29,9 +29,9 @@ and then clone this repository.
             
             source ~/.bashrc
             
-4. Using conda install astropy, numpy, matplotlib, subprocess, scipy:
+4. Using conda install astropy, numpy, matplotlib, scipy:
 
-        conda install astropy numpy matplotlib subprocess scipy
+        conda install astropy numpy matplotlib scipy
         
 * (optional) For using pgamma.py, bh.py or gamma_gamma.py (this issue is to be fixed in future):
     1. In the processes/c_codes/PhotoHadron/pgamma.cpp file in the 2nd line replace '/home/raylend/anaconda3' with a relevant path to your anaconda3. Do not remove '/include/python3.7m/Python.h'.
