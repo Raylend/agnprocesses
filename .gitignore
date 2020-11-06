@@ -16,3 +16,5 @@ processes/c_codes/BHPairProduction/input/*
 processes/c_codes/BHPairProduction/output/*
 processes/c_codes/GammaGammaPairProduction/input/*
 processes/c_codes/GammaGammaPairProduction/output/*
+processes/c_codes/GammaGammaInteractionRate/input/*
+processes/c_codes/GammaGammaInteractionRate/output/*

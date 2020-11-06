@@ -58,6 +58,45 @@ def gamma_gamma_install(dev_mode=True):
     return None
 
 
+def interaction_rate_install(dev_mode=True):
+    try:
+        with open('processes/logs/gamma_gamma_interaction_rate-log', mode='r') as f:
+            gamma_gamma_install_flag = int(f.read(1))
+            f.close()
+    except:
+        gamma_gamma_install_flag = 0
+    if gamma_gamma_install_flag == 0 or dev_mode == True:
+        # %% 1. creating .o files
+        print("1. Creating .o files...")
+        ########################################################################
+        cmd = "g++ -c -fPIC processes/c_codes/GammaGammaInteractionRate/gamma_gamma_interaction_rate_core.cpp -o bin/shared/gamma-gamma-interaction-rate-core.o"
+        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
+        ########################################################################
+        cmd = "g++ -c -fPIC processes/c_codes/GammaGammaInteractionRate/gamma_gamma_interaction_rate.cpp -o bin/shared/gamma-gamma-interaction-rate.o"
+        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
+        ########################################################################
+        print('Done!')
+        # % % 2. creating a library file .so
+        print("2. Creating an .so library file...")
+        cmd = 'g++ -shared bin/shared/gamma-gamma-interaction-rate-core.o bin/shared/gamma-gamma-interaction-rate.o -o bin/shared/libGammaGammaInteractionRate.so'
+        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
+        print('Done!')
+        # %% 3. installing setup.py, i.e. installing the module
+        print("3. Installing the module...")
+        cmd = 'python setup-gamma-gamma-interaction-rate.py install'
+        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
+        print(str(cmdout))
+        print('Done!')
+        # %% 4. Completed
+        print("4.Installation of gamma-gamma interaction rate library completed.")
+        with open('processes/logs/gamma_gamma_interaction_rate-log', mode='w') as f:
+            f.write('1')
+            f.close()
+    else:
+        pass
+    return None
+
+
 def pair_production(field,
                     gamma,
                     background_photon_energy_unit=u.eV,
@@ -66,7 +105,7 @@ def pair_production(field,
                     gamma_sed_unit=u.eV / (u.cm**2 * u.s)):
     """
     field is the string with the path to the target photon field .txt file
-    OR numpy array with 2 colums: the first column is the background photon
+    OR numpy array with 2 columns: the first column is the background photon
     energy, the second columnn is the background photon density.
     Units in the field table must correspond to the
     background_photon_energy_unit parameter and the
@@ -153,6 +192,75 @@ def pair_production(field,
     pair_e = (pair[:, 0] * u.eV).to(gamma_energy_unit)
     pair_sed = pair[:, 1] * gamma_sed_unit
     return (pair_e, pair_sed)
+
+
+def interaction_rate(field,
+                     e_min,
+                     e_max,
+                     background_photon_energy_unit=u.eV,
+                     background_photon_density_unit=(u.eV * u.cm**3)**(-1)):
+    """
+    field is the string with the path to the target photon field .txt file
+    OR numpy array with 2 columns: the first column is the background photon
+    energy, the second columnn is the background photon density.
+    Units in the field table must correspond to the
+    background_photon_energy_unit parameter and the
+    background_photon_density_unit parameter.
+    field should contain no more than 100 strings (rows)!!!
+    (more strings will be implemented in future)
+
+    e_min, e_max are minimum and maximum gamma-ray energy correspondingly.
+    They must be in astropy energy units.
+    """
+    try:
+        e_min = e_min.to(u.eV)
+    except:
+        raise ValueError("e_min must be an energy astropy Quantity!")
+    try:
+        e_max = e_max.to(u.eV)
+    except:
+        raise ValueError("e_max must be an energy astropy Quantity!")
+    ###########################################################################
+    try:
+        energy_coef = background_photon_energy_unit.to(u.eV) / (1.0 * u.eV)
+        dens_coef = background_photon_density_unit.to(
+            (u.eV * u.cm**3)**(-1)
+        ) / (u.eV * u.cm**3)**(-1)
+    except AttributeError:
+        raise AttributeError(
+            "Make sure that background_photon_energy_unit is in energy units, background_photon_density_unit is in [energy * volume]**(-1) units.")
+    ###########################################################################
+    # background photon field
+    if type(field) == type(''):
+        try:
+            field = np.loadtxt(field)
+            field[:, 0] = field[:, 0] * energy_coef
+            field[:, 1] = field[:, 1] * dens_coef
+        except:
+            raise ValueError(
+                "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).\nTry to use an absolute path.")
+    elif type(field) == type(np.array(([2, 1], [5, 6]))):
+        field[:, 0] = field[:, 0] * energy_coef
+        field[:, 1] = field[:, 1] * dens_coef
+    else:
+        raise ValueError(
+            "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
+    if field[:, 0].shape[0] > 100:
+        raise NotImplementedError(
+            "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)")
+    photon_path = 'processes/c_codes/GammaGammaInteractionRate/input/photon_field.txt'
+    np.savetxt(photon_path, field, fmt='%.6e')
+    ###########################################################################
+    interaction_rate_install()
+    import gamma_gamma_interaction_rate_ext
+    ###########################################################################
+    gamma_gamma_interaction_rate_ext.rate(
+        photon_path, e_min.value, e_max.value)
+    inter = np.loadtxt(
+        'processes/c_codes/GammaGammaInteractionRate/output/gamma-gamma_interaction_rate.txt')
+    inter_e = inter[:, 0] * u.eV
+    inter_rate = inter[:, 1] * u.cm**(-1)
+    return (inter_e, inter_rate)
 
 
 def test():
