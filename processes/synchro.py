@@ -33,7 +33,10 @@ def derishev(
     try:
         b = b.to(u.G)
     except:
-        raise ValueError("Magnetic field strength must be in gauss units!")
+        try:
+            b = b.to(u.g**0.5 * u.cm**(-0.5) * u.s**(-1))
+        except:
+            raise ValueError("Magnetic field strength must be in gauss units!")
     if b.unit == u.G:
         b = b.value * u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
