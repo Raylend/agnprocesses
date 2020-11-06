@@ -34,6 +34,7 @@ from scipy.integrate import simps
 
 
 if __name__ == '__main__':
+    ############################################################################
     # Geometry, distance, magnetic field
     z = 0.3365
     doppler = 30.0  # Doppler blob factor
@@ -72,7 +73,8 @@ if __name__ == '__main__':
     synchro_density = (synchro_spec / (4.0 / 3.0 * np.pi * r_b**2 * const.c.to(
         u.cm / u.s)
     )).to(u.eV**(-1) * u.cm**(-3))
-    field = spec.create_2column_table(synchro_epsilon, synchro_density)
+    field = spec.create_2column_table(synchro_epsilon,
+                                      synchro_density)
     synchro_e = synchro_epsilon / (1.0 + z) * doppler
     synchro_sed = synchro_epsilon**2 * synchro_spec
     synchro_sed = synchro_sed * doppler**4 / (4.0 * np.pi * d_l**2)
@@ -97,6 +99,9 @@ if __name__ == '__main__':
     ###########################################################################
     summ_e, summ_sed = spec.summ_spectra(synchro_e, synchro_sed, ic_e, ic_sed,
                                          nbin=100)
+    summ_filter = (summ_e < 2.0 * u.TeV)  # filter to plot only up to 2 TeV
+    summ_e = summ_e[summ_filter]
+    summ_sed = summ_sed[summ_filter]
     ###########################################################################
     # Data from Science https://science.sciencemag.org/content/361/6398/eaat1378 : gamma-rays
     data = np.loadtxt(
@@ -107,15 +112,21 @@ if __name__ == '__main__':
     data_up = data[:, 2]
     yerr = [data_low, data_up]
     ###########################################################################
-    # Summ
-    summ_filter = (summ_e < 2.0 * u.TeV)  # filter to plot only up to 2 TeV
-    summ_e = summ_e[summ_filter]
-    summ_sed = summ_sed[summ_filter]
-    ###########################################################################
     # fig = plt.figure(figsize=(8, 6))
     # ax = fig.add_subplot(1, 1, 1)
     fig, ax = plt.subplots()
 
+    plt.plot(
+        summ_e, summ_sed,
+        marker=None,
+        linestyle=':',
+        linewidth=3,
+        color='c',
+        zorder=100,
+        label='summ without absorption'
+    )
+    # EBL absorption: ON
+    summ_sed = summ_sed * np.exp(-ebl.tau_gilmore(summ_e, z))
     plt.plot(
         summ_e, summ_sed,
         marker=None,
@@ -135,7 +146,7 @@ if __name__ == '__main__':
     plt.plot(
         ic_e, ic_sed,
         marker=None,
-        linewidth=3,
+        linewidth=2,
         linestyle='--',
         color='b',
         label='SSC'
