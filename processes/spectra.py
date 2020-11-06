@@ -199,6 +199,68 @@ def create_2column_table(col1, col2):
     return table
 
 
+def to_current_energy(e, e1, s1):
+    """
+    Interpolates s1 to points of e array given that s1 corresponds to
+    the points of e1. E.g., SED s1 corresponds to energy bins e1, but you want
+    to interpolate it to elements of a numpy array e.
+
+    e and e1 are not necessary energies.
+
+    e is the numpy array of interest.
+
+    s1 is the function (intensity, SED and so on) to be interpolated.
+
+    e1 is the numpy array corresponding to the s1 array.
+
+    If e is an astropy Quantity, e1 should be an astopy Quantity.
+
+    Final energy and function have units of e and s1 correspondingly.
+    """
+    ###########################################################################
+    try:
+        if e1.shape[0] != s1.shape[0]:
+            raise ValueError("sizes of e1 and s1 must be equal!")
+    except AttributeError:
+        raise AttributeError(
+            "e1, s1, e must be numpy arrays or array-like!")
+    ###########################################################################
+    x_u = None
+    y_u = None
+    try:
+        x_u = e.unit
+        e = e.value
+    except AttributeError:
+        pass
+    try:
+        e1 = e1.to(x_u)
+        e1 = e1.value
+    except AttributeError:
+        if x_u is None:
+            pass
+        else:
+            raise ValueError("e1 must be an astopy Quantity as e!")
+    try:
+        y_u = s1.unit
+        s1 = s1.value
+    except AttributeError:
+        pass
+    ###########################################################################
+    logx1 = np.log10(e1)
+    logy1 = np.log10(s1)
+    f1 = interpolate.interp1d(logx1, logy1,
+                              kind='linear',
+                              bounds_error=False,
+                              fill_value=(-40, -40))
+    x = np.log10(e)
+    s = (10.0**(f1(x)))  # new interpolated function values
+    ###########################################################################
+    if y_u is not None:
+        s = s * y_u
+
+    return(s)
+
+
 def test():
     print("spectra.py imported successfully.")
     return None
