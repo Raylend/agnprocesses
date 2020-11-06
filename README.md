@@ -1,6 +1,6 @@
 ## Installation (Ubuntu based distribution)
 1. Create a separate folder on your computer.
-2. Open the terminal **in this folder** and clone this repository using the following command:
+2. Open the terminal **in the folder 'agnprocesses'** and clone this repository using the following command:
 
         git clone https://github.com/Raylend/agnprocesses.git
         
@@ -36,6 +36,10 @@ and then clone this repository.
     
 ## Usage
 All operations are to be done in a separate .py file. See main.py file as an example of the SSC (synchrotron self Compton) model.
+
+To run your .py program in the terminal opened in the folder 'agnprocesses' use the following command (main is the name of the main.py file, you can rename it if you want):
+
+        python main.py
 
 * (optional) If you want to use hadronic part of agnprocesses, uncomment 'import processes.pgamma as pgamma', 'import processes.bh as bh', 'import processes.gamma_gamma as gamma_gamma' to use these modules. In such a case see (optional) instructions above.
 
