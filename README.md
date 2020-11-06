@@ -45,6 +45,13 @@ To run your .py program in the terminal opened in the folder 'agnprocesses' use 
 
         python main.py
 
+To make sure you use the last version of the agnprocesses package use
+        
+        git fetch
+        
+        git pull
+        
+to download last updates.
 * (optional) If you want to use hadronic part of agnprocesses, uncomment 'import processes.pgamma as pgamma', 'import processes.bh as bh', 'import processes.gamma_gamma as gamma_gamma' to use these modules. In such a case see (optional) instructions above.
 
 ## Recommendations
