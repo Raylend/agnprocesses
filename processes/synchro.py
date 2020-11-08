@@ -239,6 +239,65 @@ def derishev_synchro_table(
     return f
 
 
+def timescale(e, b):
+    """
+    Calculates characteristic timescale of synchrotron energy losses.
+
+    e is astropy array-like Quantity in energy units
+
+    b is the magnetic field strength
+    """
+    def de_dt_synchro_mono(e0):
+        e0 = e0.to(u.eV)
+        e_s = np.logspace(1.0e-06 * np.log10(e0.value),
+                          np.log10(e0.value), 100) * u.eV
+        nu = (e_s / const.h).to(u.Hz)
+        d2n_de_dt = derishev_synchro_spec(nu,
+                                          b,
+                                          spec_law='monoenergetic',
+                                          en_mono=e0)
+        dE_dt = simps(d2n_de_dt.value * e_s.value, e_s.value) * \
+            d2n_de_dt.unit * e_s.unit**2
+        return (dE_dt)
+
+    def de_dt_synchro_mono_value(e0):
+        return(de_dt_synchro_mono(e0).value)
+    ###########################################################################
+    dE_dt = np.array(list(map(de_dt_synchro_mono_value, e))) * \
+        de_dt_synchro_mono(e[0]).unit
+    ###########################################################################
+    t = (e / dE_dt).to(u.s)
+    return(t)
+
+
+def gyroperiod(e, b,
+               particle_mass=const.m_e.cgs):
+    """
+    Computes relativistic synchrotron gyroperiod.
+
+    e is the energy in astropy Quantity energy units or dimensionless (in the
+    latter case it will be considered as a Lorentz factor)
+
+    If e is in energy units, gyroperiod does not depend on particle_mass.
+    """
+    try:
+        e_u = e.unit
+    except:
+        e_u = None
+        e = e * particle_mass.to(u.eV, u.mass_energy())
+    try:
+        b = b.to(u.G)
+        b = b.value * u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
+    except:
+        try:
+            b = b.to(u.g**0.5 * u.cm**(-0.5) * u.s**(-1))
+        except:
+            raise ValueError(
+                "b must be reducable to u.G or u.g**0.5 * u.cm**(-0.5) * u.s**(-1)!")
+    ###########################################################################
+    return(((2.0 * np.pi * e) / (const.c.cgs * const.e.gauss * b)).to(u.s))
+
+
 def test():
     print("synchro.py imported successfully.")
     return None
