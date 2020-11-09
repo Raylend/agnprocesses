@@ -298,6 +298,76 @@ def gyroperiod(e, b,
     return(((2.0 * np.pi * e) / (const.c.cgs * const.e.gauss * b)).to(u.s))
 
 
+def ssa_broken_power_law(e_photon, b,
+                         norm_e,
+                         gamma_e1, gamma_e2, e_br_e,
+                         radius_blob,
+                         particle_mass=const.m_e.cgs,
+                         particle_charge=const.e.gauss):
+    """
+    Computes SSA for the broken power law electron distribution.
+    See the book of Dermer, eq. (7.145)
+
+    e_photon is the photon energy in astropy units of energy.
+
+    b is the magnetic field strength.
+
+    norm_e is the normalization coefficient of the electron spectrum.
+    gamma_e1, gamma_e2 are the electron spectral indeces before and after
+    the break at the e_br_e energy (in astropy units of energy).
+
+    radius_blob is the radius of the emitting region.
+
+    particle_mass can be either in mass units or in energy units.
+
+    Returns the optical depth in correspondence with the e_photon array.
+    """
+    try:
+        b = b.to(u.G)
+        b = b.value * u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
+    except:
+        try:
+            b = b.to(u.g**0.5 * u.cm**(-0.5) * u.s**(-1))
+        except:
+            raise ValueError(
+                "b must be reducable to u.G or u.g**0.5 * u.cm**(-0.5) * u.s**(-1)!")
+    ###########################################################################
+    nu = (e_photon / const.h).to(u.Hz)
+    rest = particle_mass.to(u.eV, u.mass_energy())
+    r_e = particle_charge**2 / \
+        (particle_mass.to(u.g, u.mass_energy()) * const.c.cgs**2)
+    nu_B = particle_charge * b / \
+        (2.0 * np.pi * particle_mass.to(u.g, u.mass_energy()) * const.c.cgs)
+    g = ((nu / (2.0 * nu_B))**0.5).to(u.dimensionless_unscaled)
+    ###########################################################################
+    k1 = - np.pi / 36.0 * const.c.cgs * r_e / nu * g * norm_e
+    k5 = 4.0 / 3.0 * np.pi * radius_blob**3
+    g_filter = (g <= (e_br_e / rest).to(u.dimensionless_unscaled))
+    k2_left = -rest**(1 - gamma_e1) * (e_br_e)**gamma_e1 * \
+        (gamma_e1 + 2.0) * g[g_filter]**(-gamma_e1 - 3)
+    k2_right = -rest**(1 - gamma_e2) * (e_br_e)**gamma_e2 * \
+        (gamma_e2 + 2.0) * g[np.logical_not(g_filter)]**(-gamma_e2 - 3)
+    k2 = np.concatenate((k2_left, k2_right), axis=0)
+    ###########################################################################
+    k = k1 * k2 / k5
+    tau = (2.0 * k * radius_blob).to(u.dimensionless_unscaled)
+    return tau
+
+
+def dermer_sphere_absorption_coefficient(tau):
+    """
+    See the book of Dermer (2009), eq. (7.121), eq. (7.122)
+    """
+    u = 0.5 * (1.0 - (2.0 / tau**2) * (1.0 - (1.0 + tau) * np.exp(-tau)))
+    # u = np.abs(3.0 * u / tau)
+    u = (3.0 * u / tau)
+    filter = (np.abs(u) <= 0.99)
+    u_left = u[filter]
+    u_right = np.ones(u[np.logical_not(filter)].shape)
+    u = np.concatenate((u_left, u_right), axis=0)
+    return (u)
+
+
 def test():
     print("synchro.py imported successfully.")
     return None
