@@ -9,7 +9,7 @@ def luminosity_distance(redshift):
 
 def test():
     print("cosmology.py imported successfully.")
-    print("We are usint following cosmology:")
+    print("We are using the following cosmology:")
     H = cosmo.H(0)
     print("Hubble constant = {:f}".format(H))
     Om = cosmo.Om0
