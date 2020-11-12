@@ -365,6 +365,10 @@ def dermer_sphere_absorption_coefficient(tau):
     u_left = u[filter]
     u_right = np.ones(u[np.logical_not(filter)].shape)
     u = np.concatenate((u_left, u_right), axis=0)
+    filter2 = (u >= 0.98)
+    x = np.arange(0, u.shape[0], 1)
+    i2 = np.min(x[filter2])
+    u[i2:] = 1.0
     return (u)
 
 
