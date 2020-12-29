@@ -37,28 +37,46 @@ def tau_gilmore(energy, redshift):
         for element_e in energy:
             e_filter = (element_e < e_tau)
             if not any(e_filter):
-                raise ValueError(
-                    "energy = {:.3e} is outside possible limits!".format(
-                        element_e))
-            tau_list.append(
-                TAU[order[e_filter][0]]
-            )
+                tau_list.append(
+                    TAU[order[-1]]
+                )
+                print("Warning!" +
+                      "energy is more than maximum possible! Applying tau for 100 TeV")
+                # raise ValueError(
+                #     "energy = {:.3e} is outside possible limits!".format(
+                #         element_e))
+            else:
+                tau_list.append(
+                    TAU[order[e_filter][0]]
+                )
     except TypeError:
         e_filter = (energy < e_tau)
         if not any(e_filter):
-            raise ValueError(
-                "energy = {:.3e} is outside possible limits!".format(
-                    energy))
-        tau_list.append(
-            TAU[order[e_filter][0]]
-        )
+            tau_list.append(
+                TAU[order[-1]]
+            )
+            print("Warning!" +
+                  "energy is more than maximum possible! Applying tau for 100 TeV")
+            # raise ValueError(
+            #     "energy = {:.3e} is outside possible limits!".format(
+            #         energy))
+        else:
+            tau_list.append(
+                TAU[order[e_filter][0]]
+            )
     except IndexError:
         e_filter = (energy < e_tau)
         if not any(e_filter):
-            raise ValueError(
-                "energy = {:.3e} is outside possible limits!".format(
-                    energy))
-        tau_list.append(
-            TAU[order[e_filter][0]]
-        )
+            tau_list.append(
+                TAU[order[-1]]
+            )
+            print("Warning!" +
+                  "energy is more than maximum possible! Applying tau for 100 TeV")
+            # raise ValueError(
+            #     "energy = {:.3e} is outside possible limits!".format(
+            #         energy))
+        else:
+            tau_list.append(
+                TAU[order[e_filter][0]]
+            )
     return np.array(tau_list)

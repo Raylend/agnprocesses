@@ -71,8 +71,17 @@ def gamma_to_beta(gamma):
     return(1.0 - gamma**(-2))**0.5
 
 
+def doppler_factor(gamma, theta):
+    return((gamma * (1.0 - gamma_to_beta(gamma) * np.cos(theta)))**(-1))
+
+
 def four_vector_square(v):
     return (v[0]**2 - (v[1]**2 + v[2]**2 + v[3]**2))
+
+
+def three_vector_random(*args):
+    x = np.random.rand(3, 1)
+    return (x / np.linalg.norm(x))
 
 
 def test():
