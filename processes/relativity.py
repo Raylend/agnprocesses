@@ -80,7 +80,7 @@ def four_vector_square(v):
 
 
 def three_vector_random(*args):
-    x = np.random.rand(3, 1)
+    x = np.random.uniform(low=-1.0, high=1.0, size=(3, 1))
     return (x / np.linalg.norm(x))
 
 
