@@ -1,5 +1,5 @@
 ## Installation (Ubuntu based distribution)
-* (optional) If you do not have git installed on your computer, you can download it using
+If you do not have git installed on your computer, you can download it using
 
         sudo apt install git
         
