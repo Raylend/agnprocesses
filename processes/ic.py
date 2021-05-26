@@ -240,7 +240,7 @@ def inverse_compton_spec(
         if all(el is not None for el in par_list):
             ee = en_min.unit * np.logspace(
                 np.log10(en_min.value),
-                np.log10(en_max.value),
+                np.log10(en_max.to(en_min.unit).value),
                 number_of_integration
             )
 
@@ -281,12 +281,57 @@ def inverse_compton_spec(
              en_break, en_min, en_max, norm correctly"
             )
     ###########################################################################
+    elif spec_law == 'power_law':
+        par_list = [gamma1, en_ref, en_min, en_max, norm]
+        if all(el is not None for el in par_list):
+            ee = en_min.unit * np.logspace(
+                np.log10(en_min.value),
+                np.log10(en_max.to(en_min.unit).value),
+                number_of_integration
+            )
+
+            def underintegral(energy):
+                return(
+                    (inverse_compton_over_photon_field(alpha,
+                                                       energy,
+                                                       field,
+                                                       particle_mass=particle_mass,
+                                                       particle_charge=particle_charge,
+                                                       background_photon_energy_unit=background_photon_energy_unit,
+                                                       background_photon_density_unit=background_photon_density_unit)).value *
+                    (spec.power_law(
+                        energy, gamma1, en_ref=en_ref, norm=norm
+                    )).value
+                )
+            y = np.array(list(map(underintegral, ee)))
+            f = np.array(list(
+                map(
+                    lambda i: simps(y[:, i].reshape(ee.shape), ee.value),
+                    range(0, alpha.shape[0])
+                )
+            )
+            ) * (inverse_compton_over_photon_field(alpha,
+                                                   ee[0],
+                                                   field,
+                                                   particle_mass=particle_mass,
+                                                   particle_charge=particle_charge,
+                                                   background_photon_energy_unit=background_photon_energy_unit,
+                                                   background_photon_density_unit=background_photon_density_unit)).unit * \
+                (spec.power_law(
+                    ee[0], gamma1, en_ref=en_ref, norm=norm)
+                 ).unit * ee[0].unit
+            # f = f.decompose(['eV', 's', 'cm'])
+        else:
+            raise ValueError(
+                "Make sure you defined all of gamma, en_ref, en_min, en_max, norm correctly"
+            )
+    ###########################################################################
     elif spec_law == 'exponential_cutoff':
         par_list = [gamma1, en_cutoff, en_min, en_max, norm, en_ref]
         if all(el is not None for el in par_list):
             ee = en_min.unit * np.logspace(
                 np.log10(en_min.value),
-                np.log10(en_max.value),
+                np.log10(en_max.to(en_min.unit).value),
                 number_of_integration
             )
 
@@ -326,6 +371,10 @@ def inverse_compton_spec(
                 en_max, norm, en_ref correctly"
             )
     ###########################################################################
+    else:
+        raise ValueError(
+            f"Unknown charged particle spectrum type, valid are: {valid_spec_laws}")
+
     return f
 
 
