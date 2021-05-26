@@ -1,4 +1,8 @@
 ## Installation (Ubuntu based distribution)
+* (optional) If you do not have git installed on your computer, you can download it using
+
+        sudo apt install git
+        
 1. Create a separate folder on your computer.
 2. Open the terminal **in this folder** and clone this repository using the following command:
 
@@ -7,10 +11,6 @@
 Then open the folder 'agnprocesses':
 
         cd agnprocesses
-        
-* (optional) If you do not have git installed on your computer, you can download it using
-
-        sudo apt install git
         
 and then clone this repository.
         
