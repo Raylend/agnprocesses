@@ -80,8 +80,17 @@ def four_vector_square(v):
 
 
 def three_vector_random(*args):
-    x = np.random.uniform(low=-1.0, high=1.0, size=(3, 1))
-    return (x / np.linalg.norm(x))
+    # x = np.random.uniform(low=-1.0, high=1.0, size=(3, 1)) WRONG
+    # return (x / np.linalg.norm(x)) WRONG
+    # see https://gist.github.com/andrewbolster/10274979
+    phi = np.random.uniform(0, 2.0 * np.pi)
+    costheta = np.random.uniform(-1.0, 1.0)
+    theta = np.arccos(costheta)
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
+    ar = np.array((x, y, z)).reshape(3, 1)
+    return ar
 
 
 def test():

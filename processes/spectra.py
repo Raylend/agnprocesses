@@ -117,6 +117,8 @@ def summ_spectra(e1, s1, e2, s2, nbin=100):
 
     Final energy and spectrum (SED) has units of e1 and s1 correspondingly.
     """
+    x_u = 1
+    y_u = 1
     try:
         if e1.shape[0] != s1.shape[0]:
             raise ValueError("sizes of e1 and s1 must be equal!")
