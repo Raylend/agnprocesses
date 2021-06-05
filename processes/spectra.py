@@ -34,6 +34,19 @@ def broken_power_law(en, gamma1, gamma2, en_break, norm=1.0 * u.eV**(-1)):
     return f
 
 
+def log_parabola(en, alpha, beta, en_ref=1.0 * u.eV, norm=1.0 * u.eV**(-1)):
+    f = norm * (en / en_ref)**(-
+                               (alpha + beta * np.log((en / en_ref).to(
+                                   u.dimensionless_unscaled))
+                                )
+                               )
+    try:
+        f = f.to(norm.unit)
+    except AttributeError:
+        pass
+    return f
+
+
 def exponential_cutoff(en,
                        gamma,
                        en_cutoff,
