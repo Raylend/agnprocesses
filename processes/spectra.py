@@ -35,9 +35,12 @@ def broken_power_law(en, gamma1, gamma2, en_break, norm=1.0 * u.eV**(-1)):
 
 
 def log_parabola(en, alpha, beta, en_ref=1.0 * u.eV, norm=1.0 * u.eV**(-1)):
+    try:
+        x = (en / en_ref).to(u.dimensionless_unscaled)
+    except AttributeError:
+        x = (en / en_ref)
     f = norm * (en / en_ref)**(-
-                               (alpha + beta * np.log((en / en_ref).to(
-                                   u.dimensionless_unscaled))
+                               (alpha + beta * np.log(x)
                                 )
                                )
     try:
