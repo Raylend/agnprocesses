@@ -20,7 +20,7 @@ pip install -r requirements.txt
 make install
 ```
 
-4. Compiled libraries are currently placed at `./bin/shared`. You must define LD_LIBRARY_PATH environment variable to use them. This may be done in `~/.bashrc` or in other kind of startup script (e.g. in venv activation script). (**TBD: install libs in /usr/local/lib or in user-specified location**)
+4. Compiled libraries are currently placed at `./bin/shared`. You must define LD_LIBRARY_PATH environment variable to use them. This may be done in `~/.bashrc` or in any other startup script (e.g. in venv activation script). (**TBD: install libs in /usr/local/lib or in user-specified location**)
 
 ```bash
 echo "

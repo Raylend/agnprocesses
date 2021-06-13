@@ -13,24 +13,22 @@ import numpy as np
 from pathlib import Path
 
 import agnprocesses.ext.bh as bh_ext
+from .ext_io import get_io_paths
 
 
-CUR_DIR = Path(__file__).parent
-BH_EXT_DIR = CUR_DIR / 'bh_ext_io'
-EXT_INPUT = BH_EXT_DIR / 'input'
-EXT_OUTPUT = BH_EXT_DIR / 'output'
+inpath, outpath = get_io_paths('bh_ext_io')
 
-for dir in [BH_EXT_DIR, EXT_INPUT, EXT_OUTPUT]:
-    dir.mkdir(exist_ok=True)
 
-def kelner_bh_calculate(field,
-                        energy_proton_min,
-                        energy_proton_max,
-                        p_p,
-                        e_cut_p=-1,
-                        C_p=1.0 / (u.eV),
-                        background_photon_energy_unit=u.eV,
-                        background_photon_density_unit=(u.eV * u.cm**3)**(-1)):
+def kelner_bh_calculate(
+    field,
+    energy_proton_min,
+    energy_proton_max,
+    p_p,
+    e_cut_p=-1,
+    C_p=1.0 / (u.eV),
+    background_photon_energy_unit=u.eV,
+    background_photon_density_unit=(u.eV * u.cm ** 3) ** (-1),
+):
     """
     energy_proton_min is the minimum proton energy
     (must be an astropy Quantity of energy or float (in the latter case it will
@@ -60,8 +58,9 @@ def kelner_bh_calculate(field,
     """
     try:
         energy_coef = background_photon_energy_unit.to(u.eV) / (1.0 * u.eV)
-        dens_coef = background_photon_density_unit.to(
-            (u.eV * u.cm**3)**(-1)) / (u.eV * u.cm**3)**(-1)
+        dens_coef = background_photon_density_unit.to((u.eV * u.cm ** 3) ** (-1)) / (
+            u.eV * u.cm ** 3
+        ) ** (-1)
     except AttributeError:
         raise AttributeError(
             "Make sure that background_photon_energy_unit is in energy units, "
@@ -94,21 +93,19 @@ def kelner_bh_calculate(field,
         raise NotImplementedError(
             "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)"
         )
-    
-    photon_field_path = str((EXT_INPUT / 'field.txt').resolve())
-    output_path = str((EXT_OUTPUT / 'BH_SED.txt').resolve())
 
-    np.savetxt(photon_field_path, field, fmt='%.6e')
+    photon_field_path = str((inpath / "field.txt").resolve())
+    output_path = str((outpath / "BH_SED.txt").resolve())
+
+    np.savetxt(photon_field_path, field, fmt="%.6e")
 
     try:
         energy_proton_min = energy_proton_min.to(u.eV)
         energy_proton_max = energy_proton_max.to(u.eV)
     except AttributeError:
         try:
-            energy_proton_min = (energy_proton_min * const.m_p * const.c**2).to(
-                u.eV)
-            energy_proton_max = (energy_proton_max * const.m_p * const.c**2).to(
-                u.eV)
+            energy_proton_min = (energy_proton_min * const.m_p * const.c ** 2).to(u.eV)
+            energy_proton_max = (energy_proton_max * const.m_p * const.c ** 2).to(u.eV)
         except:
             raise ValueError(
                 "Problems with energy_proton_min and energy_proton_max!\n"
@@ -120,18 +117,19 @@ def kelner_bh_calculate(field,
         if e_cut_p < 0:
             e_cut_p = e_cut_p * u.dimensionless_unscaled
         else:
-            e_cut_p = (e_cut_p * const.m_p * const.c**2).to(u.eV)
+            e_cut_p = (e_cut_p * const.m_p * const.c ** 2).to(u.eV)
 
     bh_ext.bh(
         photon_field_path,
         output_path,
         energy_proton_min.value,
         energy_proton_max.value,
-        p_p, e_cut_p.value
+        p_p,
+        e_cut_p.value,
     )
 
     pair = np.loadtxt(output_path)
     pair_e = pair[:, 0] * u.eV
-    pair_sed = pair[:, 1] * (u.eV * u.s**(-1))
+    pair_sed = pair[:, 1] * (u.eV * u.s ** (-1))
     pair_sed = pair_sed * C_p / (1.0 / u.eV)
     return (pair_e, pair_sed)

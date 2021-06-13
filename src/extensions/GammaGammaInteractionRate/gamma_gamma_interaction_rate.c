@@ -17,7 +17,6 @@ double epsilon[SIZE_PHOTON_FIELD];
 double density[SIZE_PHOTON_FIELD];
 //
 //
-void gamma_gamma_interaction_rate_internal(char *, double, double);
 double beta(double s);
 double sigma_pair(double s);
 void read_photon_field(char *);
@@ -27,7 +26,7 @@ double gamma_gamma_rate(double E);
 //
 //
 //
-void gamma_gamma_interaction_rate_internal(char *photon_path, double E_min, double E_max)
+void gamma_gamma_interaction_rate(char *photon_path, char *output_path, double E_min, double E_max)
 {
     FILE * fp;
     read_photon_field(photon_path);
@@ -50,7 +49,7 @@ void gamma_gamma_interaction_rate_internal(char *photon_path, double E_min, doub
     //
     //
     //
-    fp = fopen("processes/c_codes/GammaGammaInteractionRate/output/gamma-gamma_interaction_rate.txt", "w");
+    fp = fopen(output_path, "w");
     if (fp == NULL)
     {
         printf("Couldn't create output/... file!\n");

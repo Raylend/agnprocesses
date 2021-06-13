@@ -3,20 +3,15 @@ This program computes (electron + positron) SED
 produced via gamma-ray - photon collisions using
 E. I. Podlesnyi's C codes.
 """
+
 import subprocess  # to run prompt scripts from python
-# import os
 from astropy import units as u
-from astropy import constants as const
 import numpy as np
-from scipy.integrate import simps
-# import matplotlib.pyplot as plt
-try:
-    import processes.spectra as spec
-except:
-    try:
-        import spectra as spec
-    except:
-        raise ImportError("a problem with importing spectra.py occured")
+
+import agnprocesses.ext.ggir as ggir_ext
+
+from .ext_io import get_io_paths
+
 
 
 def gamma_gamma_install(dev_mode=True):
@@ -51,45 +46,6 @@ def gamma_gamma_install(dev_mode=True):
         # %% 4. Completed
         print("4.Installation of gamma-gamma pair production library completed.")
         with open('processes/logs/gamma_gamma-log', mode='w') as f:
-            f.write('1')
-            f.close()
-    else:
-        pass
-    return None
-
-
-def interaction_rate_install(dev_mode=True):
-    try:
-        with open('processes/logs/gamma_gamma_interaction_rate-log', mode='r') as f:
-            gamma_gamma_install_flag = int(f.read(1))
-            f.close()
-    except:
-        gamma_gamma_install_flag = 0
-    if gamma_gamma_install_flag == 0 or dev_mode == True:
-        # %% 1. creating .o files
-        print("1. Creating .o files...")
-        ########################################################################
-        cmd = "g++ -c -fPIC processes/c_codes/GammaGammaInteractionRate/gamma_gamma_interaction_rate_core.cpp -o bin/shared/gamma-gamma-interaction-rate-core.o"
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ########################################################################
-        cmd = "g++ -c -fPIC processes/c_codes/GammaGammaInteractionRate/gamma_gamma_interaction_rate.cpp -o bin/shared/gamma-gamma-interaction-rate.o"
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ########################################################################
-        print('Done!')
-        # % % 2. creating a library file .so
-        print("2. Creating an .so library file...")
-        cmd = 'g++ -shared bin/shared/gamma-gamma-interaction-rate-core.o bin/shared/gamma-gamma-interaction-rate.o -o bin/shared/libGammaGammaInteractionRate.so'
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        print('Done!')
-        # %% 3. installing setup.py, i.e. installing the module
-        print("3. Installing the module...")
-        cmd = 'python setup-gamma-gamma-interaction-rate.py install'
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        print(str(cmdout))
-        print('Done!')
-        # %% 4. Completed
-        print("4.Installation of gamma-gamma interaction rate library completed.")
-        with open('processes/logs/gamma_gamma_interaction_rate-log', mode='w') as f:
             f.write('1')
             f.close()
     else:
@@ -194,6 +150,9 @@ def pair_production(field,
     return (pair_e, pair_sed)
 
 
+ggir_in, ggir_out = get_io_paths('ggir_io_ext')
+
+
 def interaction_rate(field,
                      e_min,
                      e_max,
@@ -250,21 +209,11 @@ def interaction_rate(field,
     if field[:, 0].shape[0] > 7000:
         raise NotImplementedError(
             "field should contain no more than 7000 strings (rows)! (more strings will be implemented in future)")
-    photon_path = 'processes/c_codes/GammaGammaInteractionRate/input/photon_field.txt'
+    photon_path = str(ggir_in / 'photon_field.txt')
+    output_path = str(ggir_out / 'gamma-gamma_interaction_rate.txt')
     np.savetxt(photon_path, field, fmt='%.6e')
-    ###########################################################################
-    interaction_rate_install()
-    import gamma_gamma_interaction_rate_ext
-    ###########################################################################
-    gamma_gamma_interaction_rate_ext.rate(
-        photon_path, e_min.value, e_max.value)
-    inter = np.loadtxt(
-        'processes/c_codes/GammaGammaInteractionRate/output/gamma-gamma_interaction_rate.txt')
+    ggir_ext.rate(photon_path, output_path, e_min.value, e_max.value)
+    inter = np.loadtxt(output_path)
     inter_e = inter[:, 0] * u.eV
     inter_rate = inter[:, 1] * u.cm**(-1)
     return (inter_e, inter_rate)
-
-
-def test():
-    print("gamma_gamma.py imported successfully.")
-    return None

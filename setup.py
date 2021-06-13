@@ -1,33 +1,39 @@
 from setuptools import setup, Extension
 from pathlib import Path
 
-EXT_PATH = Path('src/extensions')
-LIB_PATH = Path('bin/shared')
 
-BH_DIR = EXT_PATH / 'BHPairProduction'
+EXT_PATH = Path("./src/extensions")
+LIB_PATH = Path("./bin/shared")
+extension_kwargs = {
+    'library_dirs': [str(LIB_PATH)]
+}
+
+BH_DIR = EXT_PATH / "BHPairProduction"
 bh_ext = Extension(
-    'agnprocesses.ext.bh',
-    sources=[str(BH_DIR / 'bh.cpp')],
-    library_dirs=[str(LIB_PATH)],
-    libraries=['BetheHeitler'],
+    "agnprocesses.ext.bh",
+    sources=[str(BH_DIR / "bh.cpp")],
+    libraries=["BetheHeitler"],
+    **extension_kwargs,
 )
 
-# module = Extension(
-#     "bh_ext",
-#     sources=['processes/c_codes/BHPairProduction/bh.cpp'],
-#     library_dirs=[agn_path],
-#     # library_dirs=['/home/raylend/Science/agnprocesses/bin/shared'],
-#     libraries=['BetheHeitler']
-# )
+
+GGIR_DIR = EXT_PATH / "GammaGammaInteractionRate"
+ggir_ext = Extension(
+    "agnprocesses.ext.ggir",
+    sources=[str(GGIR_DIR / "gamma_gamma_interaction_rate_ext.cpp")],
+    libraries=["GammaGammaInteractionRate"],
+    **extension_kwargs,
+)
+
 
 setup(
-    name='agnprocesses',
-    version='0.2',
-    description='A toolbox for modelling processes in Active Galactic Nuclei',
-    author='Egor Podlesniy',
-    author_email='podlesnyi.ei14@physics.msu.ru',
-    license='GPLv3',
-    package_dir = {'': 'src'},
-    packages=['agnprocesses'],
-    ext_modules=[bh_ext]
+    name="agnprocesses",
+    version="0.2",
+    description="A toolbox for modelling processes in Active Galactic Nuclei",
+    author="Egor Podlesniy",
+    author_email="podlesnyi.ei14@physics.msu.ru",
+    license="GPLv3",
+    package_dir={"": "src"},
+    packages=["agnprocesses"],
+    ext_modules=[bh_ext, ggir_ext],
 )

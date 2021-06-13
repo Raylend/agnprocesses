@@ -2,7 +2,7 @@ from astropy.cosmology import Planck15 as cosmo
 
 
 def luminosity_distance(redshift):
-    return(cosmo.luminosity_distance(redshift))
+    return cosmo.luminosity_distance(redshift)
 
 
 def test():
@@ -15,5 +15,5 @@ def test():
     return None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test()
