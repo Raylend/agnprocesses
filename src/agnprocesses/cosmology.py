@@ -1,5 +1,3 @@
-from astropy import units as u
-from astropy import constants as const
 from astropy.cosmology import Planck15 as cosmo
 
 
@@ -8,8 +6,8 @@ def luminosity_distance(redshift):
 
 
 def test():
-    print("cosmology.py imported successfully.")
     print("We are using the following cosmology:")
+    print(cosmo.__doc__)
     H = cosmo.H(0)
     print("Hubble constant = {:f}".format(H))
     Om = cosmo.Om0

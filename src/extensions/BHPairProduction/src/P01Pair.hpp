@@ -26,7 +26,7 @@ class P01Pair:public P01Structures
     double SED_independent[SIZE_INDEPENDENT_ELECTRON_ENERGY];
     double SED_independent_final[SIZE_INDEPENDENT_ELECTRON_ENERGY];
     // functions
-    int Process(char*, double, double, double, double);
+    int Process(char*, char *, double, double, double, double);
     int CalcSpectrum(double gammap_);
     double CalcDelta(double, double); //for one specific energy
     double Sigma(double omega, double Em_, double ksi, double gammap_); //ksi= cos(theta_m)

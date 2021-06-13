@@ -17,24 +17,11 @@ P01Pair::P01Pair()
 P01Pair::~P01Pair()
 {}
 
-void P01Pair::PreparePhotonField(char * file_path)
+void P01Pair::PreparePhotonField(char * photon_field_file)
 {
     FILE * fd;
     FILE * fp;
-    fp = fopen("processes/c_codes/PhotoHadron/output/log", "a");
-    if (fp == NULL)
-    {
-        printf("Cannot create log!\n");
-    }
-    else
-    {
-        fprintf(fp, "Reading the following photon field:\n");
-        fputs(file_path, fp);
-        fprintf(fp, "\n");
-    }
-    fclose(fp);
-    //
-    fd = fopen(file_path, "r");
+    fd = fopen(photon_field_file, "r");
     if (fd == NULL)
     {
         printf("Cannot open the file with photon field!\n");
@@ -58,11 +45,11 @@ void P01Pair::PreparePhotonField(char * file_path)
     }
 }
 
-int P01Pair::Process(char * file_path, double energy_proton_min, double energy_proton_max, double p_p, double E_cut)
+int P01Pair::Process(char * photon_field_file, char * output_file, double energy_proton_min, double energy_proton_max, double p_p, double E_cut)
 {
     FILE * fd;
     double max = 0;
-    PreparePhotonField(file_path);
+    PreparePhotonField(photon_field_file);
     //
     double Ep[N_PROTON], gammap[N_PROTON];
     a_p = log10(energy_proton_max / energy_proton_min) / (double)N_PROTON;
@@ -98,7 +85,7 @@ int P01Pair::Process(char * file_path, double energy_proton_min, double energy_p
         // printf("%2.1lf\n", (double)(u+1) / (double)N_PROTON * 100.0);
     }
     printf("Done!\n");
-    fd = fopen("processes/c_codes/BHPairProduction/output/BH_SED.txt", "w");
+    fd = fopen(output_file, "w");
     max = 0.0;
     for (int i = 0; i < SIZE_INDEPENDENT_ELECTRON_ENERGY; i++)
     {

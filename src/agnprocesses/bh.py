@@ -6,60 +6,22 @@ it does not include photomeson production and its secondaries.
 For the latter process see pgamma.py file in this package.
 See Kelner, & Aharonian Phys. Rev. D 78, 034013 (2008).
 """
-import subprocess  # to run prompt scripts from python
-# import os
+
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
-from scipy.integrate import simps
-# import matplotlib.pyplot as plt
-try:
-    import processes.spectra as spec
-except:
-    try:
-        import spectra as spec
-    except:
-        raise ImportError("a problem with importing spectra.py occured")
+from pathlib import Path
+
+import agnprocesses.ext.bh as bh_ext
 
 
-def bh_install(dev_mode=True):
-    try:
-        with open('processes/logs/bh-log', mode='r') as f:
-            bh_install_flag = int(f.read(1))
-            f.close()
-    except:
-        bh_install_flag = 0
-    if bh_install_flag == 0 or dev_mode == True:
-        # %% 1. creating .o files
-        print("1. Creating .o files...")
-        ########################################################################
-        cmd = "g++ -c -fPIC processes/c_codes/BHPairProduction/Pair.cpp -o bin/shared/Pair.o"
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ########################################################################
-        cmd = "g++ -c -fPIC processes/c_codes/BHPairProduction/bh.cpp -o bin/shared/bh.o"
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ########################################################################
-        print('Done!')
-        # % % 2. creating a library file .so
-        print("2. Creating an .so library file...")
-        cmd = 'g++ -shared bin/shared/Pair.o bin/shared/bh.o -o bin/shared/libBetheHeitler.so'
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        print('Done!')
-        # %% 3. installing setup.py, i.e. installing the module
-        print("3. Installing the module...")
-        cmd = 'python setup-bh.py install'
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        print(str(cmdout))
-        print('Done!')
-        # %% 4. Completed
-        print("4.Installation of Bethe-Heitler pair production library completed.")
-        with open('processes/logs/bh-log', mode='w') as f:
-            f.write('1')
-            f.close()
-    else:
-        pass
-    return None
+CUR_DIR = Path(__file__).parent
+BH_EXT_DIR = CUR_DIR / 'bh_ext_io'
+EXT_INPUT = BH_EXT_DIR / 'input'
+EXT_OUTPUT = BH_EXT_DIR / 'output'
 
+for dir in [BH_EXT_DIR, EXT_INPUT, EXT_OUTPUT]:
+    dir.mkdir(exist_ok=True)
 
 def kelner_bh_calculate(field,
                         energy_proton_min,
@@ -102,30 +64,42 @@ def kelner_bh_calculate(field,
             (u.eV * u.cm**3)**(-1)) / (u.eV * u.cm**3)**(-1)
     except AttributeError:
         raise AttributeError(
-            "Make sure that background_photon_energy_unit is in energy units, background_photon_density_unit is in [energy * volume]**(-1) units.")
-    bh_install()
-    import bh_ext
-    ###########################################################################
-    if type(field) == type(''):
+            "Make sure that background_photon_energy_unit is in energy units, "
+            + "background_photon_density_unit is in [energy * volume]**(-1) units."
+        )
+
+    if isinstance(field, str):
         try:
             field = np.loadtxt(field)
             field[:, 0] = field[:, 0] * energy_coef
             field[:, 1] = field[:, 1] * dens_coef
         except:
             raise ValueError(
-                "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).\nTry to use an absolute path.")
-    elif type(field) == type(np.array(([2, 1], [5, 6]))):
+                "Cannot read 'field'! Make sure it is a numpy array \n"
+                + " with 2 columns or a string with the path to a .txt file with \n"
+                + " 2 columns (energy / density).\n"
+                + "Try to use an absolute path."
+            )
+    elif isinstance(field, np.ndarray):  # TODO: there may be a better way of checking this
         field[:, 0] = field[:, 0] * energy_coef
         field[:, 1] = field[:, 1] * dens_coef
     else:
         raise ValueError(
-            "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
+            "Invalid value of 'field'! Make sure it is a numpy array \n"
+            + " with 2 columns or a string with the path to a .txt file with \n"
+            + " 2 columns (energy / density)."
+        )
+
     if field[:, 0].shape[0] > 100:
         raise NotImplementedError(
-            "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)")
-    proton_target_path = 'processes/c_codes/BHPairProduction/input/field.txt'
-    np.savetxt(proton_target_path, field, fmt='%.6e')
-    ###########################################################################
+            "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)"
+        )
+    
+    photon_field_path = str((EXT_INPUT / 'field.txt').resolve())
+    output_path = str((EXT_OUTPUT / 'BH_SED.txt').resolve())
+
+    np.savetxt(photon_field_path, field, fmt='%.6e')
+
     try:
         energy_proton_min = energy_proton_min.to(u.eV)
         energy_proton_max = energy_proton_max.to(u.eV)
@@ -137,7 +111,9 @@ def kelner_bh_calculate(field,
                 u.eV)
         except:
             raise ValueError(
-                "Problems with energy_proton_min and energy_proton_max!\nMake sure they are astropy Quantities or float!")
+                "Problems with energy_proton_min and energy_proton_max!\n"
+                + "Make sure they are astropy Quantities or float!"
+            )
     try:
         e_cut_value = e_cut_p.value
     except AttributeError:
@@ -145,20 +121,17 @@ def kelner_bh_calculate(field,
             e_cut_p = e_cut_p * u.dimensionless_unscaled
         else:
             e_cut_p = (e_cut_p * const.m_p * const.c**2).to(u.eV)
-    ###########################################################################
-    bh_ext.bh(proton_target_path,
-              energy_proton_min.value,
-              energy_proton_max.value,
-              p_p, e_cut_p.value)
-    ###########################################################################
-    pair = np.loadtxt(
-        'processes/c_codes/BHPairProduction/output/BH_SED.txt')
+
+    bh_ext.bh(
+        photon_field_path,
+        output_path,
+        energy_proton_min.value,
+        energy_proton_max.value,
+        p_p, e_cut_p.value
+    )
+
+    pair = np.loadtxt(output_path)
     pair_e = pair[:, 0] * u.eV
     pair_sed = pair[:, 1] * (u.eV * u.s**(-1))
     pair_sed = pair_sed * C_p / (1.0 / u.eV)
     return (pair_e, pair_sed)
-
-
-def test():
-    print("bh.py imported successfully.")
-    return None

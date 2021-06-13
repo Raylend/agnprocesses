@@ -1,20 +1,27 @@
 #define PY_SSIZE_T_CLEAN
 #include "Python.h"
 
-#include "Pair.h"
+#include "BetheHeitler.hpp"
 
 static PyObject *
 bh(PyObject *self, PyObject *args)
 {
-    char *file_path;
+    char* photon_field_file_path;
+    char* output_file_path;
     double energy_proton_min, energy_proton_max;
     double p_p;
     double E_cut;
     //
-    if (!PyArg_ParseTuple(args, "sdddd", &file_path, &energy_proton_min, &energy_proton_max, &p_p, &E_cut))
+    if (!PyArg_ParseTuple(
+        args,
+        "ssdddd",
+        &photon_field_file_path, &output_file_path,
+        &energy_proton_min, &energy_proton_max,
+        &p_p, &E_cut
+    ))
         return NULL;
     //
-    bh_pair_production(file_path, energy_proton_min, energy_proton_max, p_p, E_cut);
+    bh_pair_production(photon_field_file_path, output_file_path, energy_proton_min, energy_proton_max, p_p, E_cut);
     //
     Py_RETURN_NONE;
 }
