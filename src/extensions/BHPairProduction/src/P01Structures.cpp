@@ -1,23 +1,6 @@
-#include "stdio.h"
-#include "stdlib.h"
-#include "math.h"
+#include <stdio.h>
 
-#define SMALLD			1.0e-40
-#define VSMALLD			1.0e-200
-#define P01StructuresFlag	0
-
-class P01Structures
-{
-    public:
-    P01Structures();
-    ~P01Structures();
-    int Init();
-//
-    double pi,alpha,r0;
-    double mp,me;
-    double k,T;					//k= Boltzmann constant
-    private:
-};
+#include "P01Structures.hpp"
 
 P01Structures::P01Structures()
 {
@@ -41,6 +24,6 @@ int P01Structures::Init()
     //T= 2.0*2.725;					//[K]
 //
     if (P01StructuresFlag>0)
-	printf("mp= %13.6e [eV] me= %13.6e [eV]\n",mp,me);
+	    printf("mp= %13.6e [eV] me= %13.6e [eV]\n",mp,me);
     return(0);
 }

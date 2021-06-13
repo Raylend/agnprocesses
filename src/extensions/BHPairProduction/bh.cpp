@@ -1,5 +1,5 @@
 #define PY_SSIZE_T_CLEAN
-#include "/home/raylend/anaconda3/include/python3.7m/Python.h"
+#include "Python.h"
 
 #include "Pair.h"
 

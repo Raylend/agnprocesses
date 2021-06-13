@@ -1,3 +1,9 @@
+#include <stdio.h>
+#include <cstdlib>
+#include <math.h>
+
+#include "P01Structures.hpp"
+
 #define P01PairFlag		0
 #define SIZE_N_PHOTONS_SYNCHRO 100 // !!!
 #define SIZE_INDEPENDENT_ELECTRON_ENERGY 50
