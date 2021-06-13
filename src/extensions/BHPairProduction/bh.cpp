@@ -20,19 +20,24 @@ bh(PyObject *self, PyObject *args)
 }
 
 static PyMethodDef methods[] = {
-    {"bh", (PyCFunction)bh, METH_VARARGS, "execute Pair.cpp with photon field at file_path and given proton spectrum parameters. Computes Bethe-Heitler electron + positron pair production spectrum."},
+    {
+        "bh",
+        (PyCFunction)bh,
+        METH_VARARGS,
+        "execute Pair::Process with photon field at file_path and given proton spectrum parameters. Computes Bethe-Heitler electron + positron pair production spectrum."
+    },
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 
-static struct PyModuleDef bh_ext = {
+static struct PyModuleDef bh_module = {
     PyModuleDef_HEAD_INIT,
-    "bh_ext",
+    "bh",
     "Implementation of Dzhatdoev's Bethe-Heitler pair production C++ codes",
     -1,
     methods
 };
 
-PyMODINIT_FUNC PyInit_bh_ext(void)
+PyMODINIT_FUNC PyInit_bh(void)
 {
-    return PyModule_Create(&bh_ext);
+    return PyModule_Create(&bh_module);
 }

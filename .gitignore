@@ -280,3 +280,6 @@ processes/c_codes/GammaGammaInteractionRate/output/*
 
 # venv environment folders
 agnenv
+
+# temporary binary files
+processes/c_codes/BHPairProduction/bin
