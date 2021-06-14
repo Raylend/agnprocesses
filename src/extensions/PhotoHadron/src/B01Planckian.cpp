@@ -1,9 +1,25 @@
+#include <string>
+
+#ifndef ELEM_PROCESSES_INCLUDED
+#define ELEM_PROCESSES_INCLUDED
+#include "./constants.c"
+#include "./B01PhotoHadronAntiNuE.cpp"
+#include "./B01PhotoHadronAntiNuMu.cpp"
+#include "./B01PhotoHadronG.cpp"
+#include "./B01PhotoHadronP.cpp"
+#include "./B01PhotoHadronE.cpp"
+#include "./B01PhotoHadronNuMu.cpp"
+#include "./B01PhotoHadronNuE.cpp"
+#endif
+
+
 #define B01PlanckianFlag	0
+
 
 class B01Planckian
 {
 public:
-    B01Planckian();
+    B01Planckian(std::string data_dir_path);
     ~B01Planckian();
     int Process();
     int Integrate(double T,double Ep,double deps);
@@ -11,17 +27,28 @@ public:
     FILE *fpa;
     FILE *fpn;
     //
-    B01PhotoHadronG phg;
-    B01PhotoHadronP php;
-    B01PhotoHadronE phe;
-    B01PhotoHadronNuMu phnm;
-    B01PhotoHadronAntiNuMu phanm;
-    B01PhotoHadronNuE phne;
-    B01PhotoHadronAntiNuE phane;
+    B01PhotoHadronG *phg;
+    B01PhotoHadronP *php;
+    B01PhotoHadronE *phe;
+    B01PhotoHadronNuMu *phnm;
+    B01PhotoHadronAntiNuMu *phanm;
+    B01PhotoHadronNuE *phne;
+    B01PhotoHadronAntiNuE *phane;
+private:
+    std::string data_dir;
 };
 
-B01Planckian::B01Planckian()
-{}
+B01Planckian::B01Planckian(std::string data_dir_path)
+{
+    data_dir = data_dir_path;
+    phg = new B01PhotoHadronG(data_dir);
+    php = new B01PhotoHadronP(data_dir);
+    phe = new B01PhotoHadronE(data_dir);
+    phnm = new B01PhotoHadronNuMu(data_dir);
+    phanm = new B01PhotoHadronAntiNuMu(data_dir);
+    phne = new B01PhotoHadronNuE(data_dir);
+    phane = new B01PhotoHadronAntiNuE(data_dir);
+}
 
 B01Planckian::~B01Planckian()
 {}
@@ -31,13 +58,13 @@ int B01Planckian::Process()
     int i;
     double T,Ep,deps;
     //
-    fpa= fopen("processes/c_codes/PhotoHadron/Data/Active","w");
+    fpa= fopen((data_dir + "Active").c_str(),"w");
     if (fpa == NULL)
     {
         printf("Couldn't create or read the file!\n");
         exit(1);
     }
-    fpn= fopen("processes/c_codes/PhotoHadron/Data/Neutrino","w");
+    fpn= fopen((data_dir + "Neutrino").c_str(),"w");
     if (fpn == NULL)
     {
         printf("Couldn't create or read the file!\n");
@@ -92,7 +119,7 @@ int B01Planckian::Integrate(double T,double Ep,double deps)
     pi = 3.141592654;
     GeV= 1.0e-9;				//[eV]
     //
-    eta0= phg.eta0;
+    eta0= phg->eta0;
     eps0= 1.0e9*(eta0*mp*mp)/(4.0*Ep);		//energy threshold [eV]
     //
     //    if (B01PlanckianFlag>0)
@@ -115,46 +142,46 @@ int B01Planckian::Integrate(double T,double Ep,double deps)
             //insert new f (number density) here
             eta= (4.0*GeV*eps*Ep)/(mp*mp);		 //approximation parameter: Phi(eta,x) -> here F(eta,x)
             //gamma
-            phg.Prepare(eta);
-            phg.FindParameters(eta);
-            F= phg.CalculateG(eta,x);
+            phg->Prepare(eta);
+            phg->FindParameters(eta);
+            F= phg->CalculateG(eta,x);
             // dN/dx= Integral(f*Phi*deps)
             sg+= f*F*deps;			//[dN/(dx*dt*dV)] [1/(s*cm^{3})] -> proportional to [dN/dE]
             //positron
-            php.Prepare(eta);
-            php.FindParameters(eta);
-            F= php.CalculateP(eta,x);
+            php->Prepare(eta);
+            php->FindParameters(eta);
+            F= php->CalculateP(eta,x);
             sp+= f*F*deps;
             //electron
-            phe.Prepare(eta);
-            phe.FindParameters(eta);
-            F= phe.CalculateE(eta,x);
+            phe->Prepare(eta);
+            phe->FindParameters(eta);
+            F= phe->CalculateE(eta,x);
             se+= f*F*deps;
             //nu_mu
-            flag1= phnm.Prepare(eta);
+            flag1= phnm->Prepare(eta);
             if (flag1==0)
             {
-                phnm.FindParameters(eta);
-                F= phnm.CalculateNuMu(eta,x);
+                phnm->FindParameters(eta);
+                F= phnm->CalculateNuMu(eta,x);
                 snm+= f*F*deps;
             }
             //anti-nu_mu
-            phanm.Prepare(eta);
-            phanm.FindParameters(eta);
-            F= phanm.CalculateAntiNuMu(eta,x);
+            phanm->Prepare(eta);
+            phanm->FindParameters(eta);
+            F= phanm->CalculateAntiNuMu(eta,x);
             sanm+= f*F*deps;
             //nu_e
-            flag2 = phne.Prepare(eta);
+            flag2 = phne->Prepare(eta);
             if (flag2==0)
             {
-                phne.FindParameters(eta);
-                F= phne.CalculateNuE(eta,x);
+                phne->FindParameters(eta);
+                F= phne->CalculateNuE(eta,x);
                 sne+= f*F*deps;
             }
             //anti-nu_e
-            phane.Prepare(eta);
-            phane.FindParameters(eta);
-            F= phane.CalculateAntiNuE(eta,x);
+            phane->Prepare(eta);
+            phane->FindParameters(eta);
+            F= phane->CalculateAntiNuE(eta,x);
             sane+= f*F*deps;
             //
             if (B01PlanckianFlag>0)

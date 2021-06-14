@@ -1,9 +1,25 @@
+#include <string>
+
+#ifndef ELEM_PROCESSES_INCLUDED
+#define ELEM_PROCESSES_INCLUDED
+#include "./constants.c"
+#include "./B01PhotoHadronAntiNuE.cpp"
+#include "./B01PhotoHadronAntiNuMu.cpp"
+#include "./B01PhotoHadronG.cpp"
+#include "./B01PhotoHadronP.cpp"
+#include "./B01PhotoHadronE.cpp"
+#include "./B01PhotoHadronNuMu.cpp"
+#include "./B01PhotoHadronNuE.cpp"
+#endif
+
+
 #define B01PlanckianCMBFlag	0
+
 
 class B01PlanckianCMB
 {
     public:
-    B01PlanckianCMB();
+    B01PlanckianCMB(std::string data_dir_path);
     ~B01PlanckianCMB();
     int Process();
     int Integrate(double T,double Ep,double deps);
@@ -11,17 +27,28 @@ class B01PlanckianCMB
     FILE *fpa;
     FILE *fpn;
     //
-    B01PhotoHadronG phg;
-    B01PhotoHadronP php;
-    B01PhotoHadronE phe;
-    B01PhotoHadronNuMu phnm;
-    B01PhotoHadronAntiNuMu phanm;
-    B01PhotoHadronNuE phne;
-    B01PhotoHadronAntiNuE phane;
+    B01PhotoHadronG *phg;
+    B01PhotoHadronP *php;
+    B01PhotoHadronE *phe;
+    B01PhotoHadronNuMu *phnm;
+    B01PhotoHadronAntiNuMu *phanm;
+    B01PhotoHadronNuE *phne;
+    B01PhotoHadronAntiNuE *phane;
+private:
+    std::string data_dir;
 };
 
-B01PlanckianCMB::B01PlanckianCMB()
-{}
+B01PlanckianCMB::B01PlanckianCMB(std::string data_dir_path)
+{
+    data_dir = data_dir_path;
+    phg = new B01PhotoHadronG(data_dir);
+    php = new B01PhotoHadronP(data_dir);
+    phe = new B01PhotoHadronE(data_dir);
+    phnm = new B01PhotoHadronNuMu(data_dir);
+    phanm = new B01PhotoHadronAntiNuMu(data_dir);
+    phne = new B01PhotoHadronNuE(data_dir);
+    phane = new B01PhotoHadronAntiNuE(data_dir);
+}
 
 B01PlanckianCMB::~B01PlanckianCMB()
 {}
@@ -69,7 +96,7 @@ int B01PlanckianCMB::Integrate(double T,double Ep,double deps)
     pi = 3.141592654;
     GeV= 1.0e-9;				//[eV]
     //
-    eta0= phg.eta0;
+    eta0= phg->eta0;
     eps0= 1.0e9*(eta0*mp*mp)/(4.0*Ep);		//[eV]
     //
     if (B01PlanckianCMBFlag>0)
@@ -91,50 +118,50 @@ int B01PlanckianCMB::Integrate(double T,double Ep,double deps)
             f= (1.0/(pi*pi))*(eps*eps)/(exp(eps/T)-1.0);
             eta= (4.0*GeV*eps*Ep)/(mp*mp);
             //gamma
-            phg.Prepare(eta);
-            phg.FindParameters(eta);
-            F= phg.CalculateG(eta,x);
+            phg->Prepare(eta);
+            phg->FindParameters(eta);
+            F= phg->CalculateG(eta,x);
             sg+= f*F*deps;
             //positron
-            php.Prepare(eta);
-            php.FindParameters(eta);
-            F= php.CalculateP(eta,x);
+            php->Prepare(eta);
+            php->FindParameters(eta);
+            F= php->CalculateP(eta,x);
             sp+= f*F*deps;
             //electron
-            phe.Prepare(eta);
-            phe.FindParameters(eta);
-            F= phe.CalculateE(eta,x);
+            phe->Prepare(eta);
+            phe->FindParameters(eta);
+            F= phe->CalculateE(eta,x);
             se+= f*F*deps;
             //nu_mu
-            flag1 = phnm.Prepare(eta);
+            flag1 = phnm->Prepare(eta);
             if (flag1 == 0)
             {
-                phnm.FindParameters(eta);
-                F= phnm.CalculateNuMu(eta,x);
+                phnm->FindParameters(eta);
+                F= phnm->CalculateNuMu(eta,x);
                 snm+= f*F*deps;
             }
             //anti-nu_mu
-            antiflag1 = phanm.Prepare(eta);
+            antiflag1 = phanm->Prepare(eta);
             if (antiflag1 == 0)
             {
-                phanm.FindParameters(eta);
-                F= phanm.CalculateAntiNuMu(eta,x);
+                phanm->FindParameters(eta);
+                F= phanm->CalculateAntiNuMu(eta,x);
                 sanm+= f*F*deps;
             }
             //nu_e
-            flag2 = phne.Prepare(eta);
+            flag2 = phne->Prepare(eta);
             if (flag2 == 0)
             {
-                phne.FindParameters(eta);
-                F= phne.CalculateNuE(eta,x);
+                phne->FindParameters(eta);
+                F= phne->CalculateNuE(eta,x);
                 sne+= f*F*deps;
             }
             //anti-nu_e
-            antiflag2 = phane.Prepare(eta);
+            antiflag2 = phane->Prepare(eta);
             if (antiflag2 == 0)
             {
-                phane.FindParameters(eta);
-                F= phane.CalculateAntiNuE(eta,x);
+                phane->FindParameters(eta);
+                F= phane->CalculateAntiNuE(eta,x);
                 sane+= f*F*deps;
             }
             //

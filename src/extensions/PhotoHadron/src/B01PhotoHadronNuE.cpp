@@ -1,9 +1,11 @@
+#include <string>
+
 #define B01PhotoHadronNuEFlag	0
 
 class B01PhotoHadronNuE
 {
 public:
-    B01PhotoHadronNuE();
+    B01PhotoHadronNuE(std::string data_dir_path);
     ~B01PhotoHadronNuE();
     int Test();
     int Init();
@@ -14,6 +16,7 @@ public:
     //
     double eta0;
 private:
+    std::string data_dir;
     //constants
     double mpi,M,r,R;
     //variables
@@ -26,9 +29,19 @@ private:
     double etane[NH],sne[NH],dne[NH],Bne[NH];
 };
 
-B01PhotoHadronNuE::B01PhotoHadronNuE()
+B01PhotoHadronNuE::B01PhotoHadronNuE(std::string data_dir_path)
 {
-    Init();
+    data_dir = data_dir_path;
+    mpi = mpip;
+    M = mp;
+    r = mpi/mp;
+    R = M/mp;
+    eta0 = 2.0*r+r*r;
+    if (B01PhotoHadronNuEFlag>0)
+    {
+        printf("mpi= %8.6e mp= %8.6e M= %8.6e r= %8.6e R= %8.6e eta0= %8.6e\n",
+        mpi,mp,M,r,R,eta0);
+    }
     ReadTable();
 }
 
@@ -49,7 +62,7 @@ int B01PhotoHadronNuE::Test()
     FindParameters(eta);
     //
     //fp= fopen("PhotoHadron-NuE-1.5","w");
-    fp= fopen("processes/c_codes/PhotoHadron/Data/PhotoHadron-NuE-30","w");
+    fp= fopen((data_dir + "PhotoHadron-NuE-30").c_str(), "w");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");
@@ -65,27 +78,12 @@ int B01PhotoHadronNuE::Test()
     return(0);
 }
 
-int B01PhotoHadronNuE::Init()
-{
-    mpi= mpip;
-    M= mp;
-    r= mpi/mp;
-    R= M/mp;
-    eta0= 2.0*r+r*r;
-    if (B01PhotoHadronNuEFlag>0)
-    {
-        printf("mpi= %8.6e mp= %8.6e M= %8.6e r= %8.6e R= %8.6e eta0= %8.6e\n",
-        mpi,mp,M,r,R,eta0);
-    }
-    return(0);
-}
-
 int B01PhotoHadronNuE::ReadTable()
 {
     int i;
     double rd;
     FILE *fp;
-    fp= fopen("processes/c_codes/PhotoHadron/Data/NuE","r");
+    fp = fopen((data_dir + "NuE").c_str(), "r");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");

@@ -1,9 +1,11 @@
+#include <string>
+
 #define B01PhotoHadronNuMuFlag	0
 
 class B01PhotoHadronNuMu
 {
 public:
-    B01PhotoHadronNuMu();
+    B01PhotoHadronNuMu(std::string data_dir_path);
     ~B01PhotoHadronNuMu();
     int Test();
     int Init();
@@ -14,6 +16,7 @@ public:
     //
     double eta0;
 private:
+    std::string data_dir;
     //constants
     double mpi,M,r;
     //variables
@@ -26,8 +29,9 @@ private:
     double etanm[NH],snm[NH],dnm[NH],Bnm[NH];
 };
 
-B01PhotoHadronNuMu::B01PhotoHadronNuMu()
+B01PhotoHadronNuMu::B01PhotoHadronNuMu(std::string data_dir_path)
 {
+    data_dir = data_dir_path;
     Init();
     ReadTable();
 }
@@ -49,7 +53,7 @@ int B01PhotoHadronNuMu::Test()
     FindParameters(eta);
     //
     //fp= fopen("PhotoHadron-NuMu-1.5","w");
-    fp= fopen("processes/c_codes/PhotoHadron/Data/PhotoHadron-NuMu-30","w");
+    fp= fopen((data_dir + "PhotoHadron-NuMu-30").c_str(), "w");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");
@@ -85,7 +89,7 @@ int B01PhotoHadronNuMu::ReadTable()
     double rd;
     FILE *fp;
     //
-    fp= fopen("processes/c_codes/PhotoHadron/Data/NuMu","r");
+    fp = fopen((data_dir + "NuMu").c_str(), "r");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");

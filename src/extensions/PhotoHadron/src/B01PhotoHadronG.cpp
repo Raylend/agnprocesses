@@ -1,9 +1,12 @@
+#include <string>
+
 #define B01PhotoHadronGFlag	0
+
 //gamma-rays
 class B01PhotoHadronG
 {
 public:
-    B01PhotoHadronG();
+    B01PhotoHadronG(std::string data_dir_path);
     ~B01PhotoHadronG();
     int Test();
     int Init();
@@ -14,6 +17,7 @@ public:
     //
     double eta0;
 private:
+    std::string data_dir;
     //constants
     double mpi,M,r;
     //variables
@@ -25,9 +29,17 @@ private:
     double etag[NH],sg[NH],dg[NH],Bg[NH];
 };
 
-B01PhotoHadronG::B01PhotoHadronG()
+B01PhotoHadronG::B01PhotoHadronG(std::string data_dir_path)
 {
-    Init();
+    data_dir = data_dir_path;
+    mpi= mpi0;
+    M= mp;
+    r= mpi/mp;
+    eta0= 2.0*r+r*r;
+    if (B01PhotoHadronGFlag>0)
+    {
+	     printf("mpi= %8.6e mp= %8.6e M= %8.6e r= %8.6e eta0= %8.6e\n", mpi,mp,M,r,eta0);
+    }
     ReadTable();
 }
 
@@ -56,7 +68,7 @@ int B01PhotoHadronG::Test()
     //fp= fopen("PhotoHadron-Gamma-1.5","w");
     //fp= fopen("PhotoHadron-Gamma-3.0","w");
     //fp= fopen("PhotoHadron-Gamma-10","w");
-    fp= fopen("processes/c_codes/PhotoHadron/Data/PhotoHadron-Gamma-30","w");
+    fp= fopen((data_dir + "PhotoHadron-Gamma-30").c_str(), "w");
     if (fp == NULL)
     {
         printf("Couldn't create the PhotoHadron-Gamma-30 file!\n");
@@ -73,25 +85,12 @@ int B01PhotoHadronG::Test()
     return(0);
 }
 
-int B01PhotoHadronG::Init()
-{
-    mpi= mpi0;
-    M= mp;
-    r= mpi/mp;
-    eta0= 2.0*r+r*r;
-    if (B01PhotoHadronGFlag>0)
-    {
-	     printf("mpi= %8.6e mp= %8.6e M= %8.6e r= %8.6e eta0= %8.6e\n", mpi,mp,M,r,eta0);
-    }
-    return(0);
-}
-
 int B01PhotoHadronG::ReadTable()
 {
     int i;
     double rd;
     FILE *fp;
-    fp = fopen("processes/c_codes/PhotoHadron/Data/Gamma","r");
+    fp = fopen((data_dir + "Gamma").c_str(), "r");
     if (fp == NULL)
     {
         printf("Couldn't find Data/Gamma!\n");

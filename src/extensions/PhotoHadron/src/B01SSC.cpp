@@ -1,5 +1,21 @@
+#include <stdio.h>
 #include <string.h>
+#include <string>
 
+#ifndef ELEM_PROCESSES_INCLUDED
+#define ELEM_PROCESSES_INCLUDED
+#include "./constants.c"
+#include "./B01PhotoHadronAntiNuE.cpp"
+#include "./B01PhotoHadronAntiNuMu.cpp"
+#include "./B01PhotoHadronG.cpp"
+#include "./B01PhotoHadronP.cpp"
+#include "./B01PhotoHadronE.cpp"
+#include "./B01PhotoHadronNuMu.cpp"
+#include "./B01PhotoHadronNuE.cpp"
+#endif
+
+
+#define IntegrationLogFlag  0
 #define B01SSCFlag	0
 #define SIZE_N_PHOTONS_SYNCHRO 100 ///!1111111!!!
 #define SIZE_X 500
@@ -16,7 +32,7 @@
 class B01SSC
 {
   public:
-    B01SSC();
+    B01SSC(std::string, std::string, std::string);
     ~B01SSC();
     //
     double epsilon_synchro[SIZE_N_PHOTONS_SYNCHRO], nph_synchro[SIZE_N_PHOTONS_SYNCHRO];
@@ -48,8 +64,8 @@ class B01SSC
     double energy_proton[N_PROTON];
     //
     //
-    void PrepareSSC(char *);
-    int Process(char* file_path, char* output_dir, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext);
+    void PrepareSSC();
+    int Process(double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext);
     int Integrate(int proton_energy_number);
     // void read_protons_parameters();
     double proton_spectrum(double E_p_eV, double p_p, double E_cut_p);
@@ -59,28 +75,41 @@ class B01SSC
     FILE *fpa;
     FILE *fpn;
     //
-    B01PhotoHadronG phg;
-    B01PhotoHadronP php;
-    B01PhotoHadronE phe;
-    B01PhotoHadronNuMu phnm;
-    B01PhotoHadronAntiNuMu phanm;
-    B01PhotoHadronNuE phne;
-    B01PhotoHadronAntiNuE phane;
+    B01PhotoHadronG *phg;
+    B01PhotoHadronP *php;
+    B01PhotoHadronE *phe;
+    B01PhotoHadronNuMu *phnm;
+    B01PhotoHadronAntiNuMu *phanm;
+    B01PhotoHadronNuE *phne;
+    B01PhotoHadronAntiNuE *phane;
   private:
-    char* output_dir_path;
+    std::string data_dir;
+    std::string input_path;
+    std::string output_dir_path;
 };
 
-B01SSC::B01SSC()
-{}
+B01SSC::B01SSC(std::string data_dir_path, std::string input_path_, std::string output_path_)
+{
+    data_dir = data_dir_path;
+    input_path = input_path_;
+    output_dir_path = output_path_;
+    phg = new B01PhotoHadronG(data_dir);
+    php = new B01PhotoHadronP(data_dir);
+    phe = new B01PhotoHadronE(data_dir);
+    phnm = new B01PhotoHadronNuMu(data_dir);
+    phanm = new B01PhotoHadronAntiNuMu(data_dir);
+    phne = new B01PhotoHadronNuE(data_dir);
+    phane = new B01PhotoHadronAntiNuE(data_dir);
+}
 
 B01SSC::~B01SSC()
 {}
 
-void B01SSC::PrepareSSC(char * file_path)
+void B01SSC::PrepareSSC()
 {
     FILE * fd;
     // fd = fopen("processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt", "r");
-    fd = fopen(file_path, "r");
+    fd = fopen(input_path.c_str(), "r");
     if (fd == NULL)
     {
         printf("Cannot open the file with photon field!\n");
@@ -97,16 +126,14 @@ void B01SSC::PrepareSSC(char * file_path)
     fclose(fd);
 }
 
-int B01SSC::Process(char* file_path, char* output_dir, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext)
+int B01SSC::Process(double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext)
 {
-    output_dir_path = output_dir;
-
     printf("Performing calculations of proton-photon meson production secondaries SED...\n");
     energy_proton_min = energy_proton_min_ext;
     energy_proton_max = energy_proton_max_ext;
     p_p = p_p_ext;
     E_cut = E_cut_ext;
-    B01SSC::PrepareSSC(file_path);
+    B01SSC::PrepareSSC();
     //
     //
     const double a_p = log10(energy_proton_max / energy_proton_min) / (double)N_PROTON;
@@ -186,7 +213,7 @@ int B01SSC::Integrate(int proton_energy_number)
     pi = 3.141592654;
     GeV= 1.0e-9;				//[eV]
     //
-    eta0= phg.eta0;
+    eta0= phg->eta0;
     eps0= 1.0e9*(eta0*mp*mp)/(4.0*Ep);		//energy threshold [eV]
     //
     if (B01SSCFlag>0)
@@ -222,60 +249,60 @@ int B01SSC::Integrate(int proton_energy_number)
                 // }
                 deps = epsilon_synchro[i] - epsilon_synchro[i-1];
                 //gamma
-                phg.Prepare(eta);
-                phg.FindParameters(eta);
-                F= phg.CalculateG(eta,x);
+                phg->Prepare(eta);
+                phg->FindParameters(eta);
+                F= phg->CalculateG(eta,x);
                 sg+= f*F*deps;
                 //positron
-                pos_flag = php.Prepare(eta);
+                pos_flag = php->Prepare(eta);
                 if (pos_flag == 0)
                 {
-                    php.FindParameters(eta);
-                    F= php.CalculateP(eta,x);
+                    php->FindParameters(eta);
+                    F= php->CalculateP(eta,x);
                     sp+= f*F*deps;
                 }
                 //electron
-                el_flag = phe.Prepare(eta);
+                el_flag = phe->Prepare(eta);
                 if (el_flag==0)
                 {
-                    phe.FindParameters(eta);
-                    F= phe.CalculateE(eta,x);
+                    phe->FindParameters(eta);
+                    F= phe->CalculateE(eta,x);
                     se+= f*F*deps;
                 }
                 //nu_mu
-                flag1 = phnm.Prepare(eta);
+                flag1 = phnm->Prepare(eta);
                 if (flag1 == 0)
                 {
-                    phnm.FindParameters(eta);
-                    F= phnm.CalculateNuMu(eta,x);
+                    phnm->FindParameters(eta);
+                    F= phnm->CalculateNuMu(eta,x);
                     snm+= f*F*deps;
                 }
                 //anti-nu_mu
-                antiflag1 = phanm.Prepare(eta);
+                antiflag1 = phanm->Prepare(eta);
                 if (antiflag1 == 0)
                 {
-                    phanm.FindParameters(eta);
-                    F= phanm.CalculateAntiNuMu(eta,x);
+                    phanm->FindParameters(eta);
+                    F= phanm->CalculateAntiNuMu(eta,x);
                     sanm+= f*F*deps;
                 }
                 //nu_e
-                flag2 = phne.Prepare(eta);
+                flag2 = phne->Prepare(eta);
                 if (flag2 == 0)
                 {
-                    phne.FindParameters(eta);
-                    F= phne.CalculateNuE(eta,x);
+                    phne->FindParameters(eta);
+                    F= phne->CalculateNuE(eta,x);
                     sne+= f*F*deps;
                 }
                 //anti-nu_e
-                antiflag2 = phane.Prepare(eta);
+                antiflag2 = phane->Prepare(eta);
                 if (antiflag2 == 0)
                 {
-                    phane.FindParameters(eta);
-                    F= phane.CalculateAntiNuE(eta,x);
+                    phane->FindParameters(eta);
+                    F= phane->CalculateAntiNuE(eta,x);
                     sane+= f*F*deps;
                 }
                 //
-                if (B01PlanckianCMBFlag>0)
+                if (IntegrationLogFlag>0)
                 {
                     printf("n= %8d eps= %13.6e f= %13.6e eta= %13.6e x= %13.6e F= %13.6e\n",
                     i,eps,f,eta,x,F);
@@ -357,15 +384,13 @@ void B01SSC::FinalSED()
     double max = 0;
     for (int l = 0; l < SIZE_ENERGY_NEUTRINO; l++)
     {
-        SED_neutrino_final[l] = SED_neutrino_final[l]*NEUTRINO_OSCILLATION_FACTOR;
+        SED_neutrino_final[l] = SED_neutrino_final[l] * NEUTRINO_OSCILLATION_FACTOR;
         if (max < SED_neutrino_final[l])
         {
             max = SED_neutrino_final[l];
         }
     }
-    char* neutrino_sed_output_path = output_dir_path;
-    strcat(neutrino_sed_output_path, "neutrino_SED.txt");
-    fp = fopen(neutrino_sed_output_path, "w");
+    fp = fopen((output_dir_path + "neutrino_SED.txt").c_str(), "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
@@ -400,9 +425,7 @@ void B01SSC::FinalSED()
             max = SED_electron_final[l];
         }
     }
-    char* electron_sed_output_path = output_dir_path;
-    strcat(electron_sed_output_path, "electron_SED.txt");
-    fp = fopen(electron_sed_output_path, "w");
+    fp = fopen((output_dir_path + "electron_SED.txt").c_str(), "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
@@ -433,9 +456,7 @@ void B01SSC::FinalSED()
             max = SED_gamma_final[l];
         }
     }
-    char* gamma_sed_output_path = output_dir_path;
-    strcat(gamma_sed_output_path, "gamma_SED.txt");
-    fp = fopen(gamma_sed_output_path, "w");
+    fp = fopen((output_dir_path + "gamma_SED.txt").c_str(), "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");

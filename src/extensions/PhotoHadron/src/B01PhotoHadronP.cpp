@@ -1,9 +1,12 @@
+#include <string>
+
 #define B01PhotoHadronPFlag	0
+
 //positrons
 class B01PhotoHadronP
 {
 public:
-    B01PhotoHadronP();
+    B01PhotoHadronP(std::string data_dir_path);
     ~B01PhotoHadronP();
     int Test();
     int Init();
@@ -14,6 +17,7 @@ public:
     //
     double eta0;
 private:
+    std::string data_dir;
     //constants
     double mpi,M,r,R;
     //variables
@@ -25,8 +29,9 @@ private:
     double etap[NH],sp[NH],dp[NH],Bp[NH];
 };
 
-B01PhotoHadronP::B01PhotoHadronP()
+B01PhotoHadronP::B01PhotoHadronP(std::string data_dir_path)
 {
+    data_dir = data_dir_path;
     Init();
     ReadTable();
 }
@@ -53,7 +58,7 @@ int B01PhotoHadronP::Test()
     //fp= fopen("PhotoHadron-Positron-1.5","w");
     //fp= fopen("PhotoHadron-Positron-3.0","w");
     //fp= fopen("PhotoHadron-Positron-10","w");
-    fp= fopen("processes/c_codes/PhotoHadron/Data/PhotoHadron-Positron-30","w");
+    fp= fopen((data_dir + "PhotoHadron-Positron-30").c_str(), "w");
     //fp= fopen("PhotoHadron-Positron-100","w");
     if (fp == NULL)
     {
@@ -89,7 +94,7 @@ int B01PhotoHadronP::ReadTable()
     int i;
     double rd;
     FILE *fp;
-    fp= fopen("processes/c_codes/PhotoHadron/Data/Positron","r");
+    fp = fopen((data_dir + "Positron").c_str(), "r");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");

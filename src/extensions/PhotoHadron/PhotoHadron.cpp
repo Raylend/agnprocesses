@@ -1,41 +1,25 @@
-#include "src/B01Structures.cpp"
-#include "src/B01PhotoHadronG.cpp"
-#include "src/B01PhotoHadronP.cpp"
-#include "src/B01PhotoHadronE.cpp"
-#include "src/B01PhotoHadronNuMu.cpp"
-#include "src/B01PhotoHadronAntiNuMu.cpp"
-#include "src/B01PhotoHadronNuE.cpp"
-#include "src/B01PhotoHadronAntiNuE.cpp"
-#include "src/B01PlanckianCMB.cpp"
-#include "src/B01Planckian.cpp"
 #include "src/B01SSC.cpp"
+
 #include <stdio.h>
+#include <string>
 
-// B01PhotoHadronG phg;
-// B01PhotoHadronP php;
-// B01PhotoHadronE phe;
-// B01PhotoHadronAntiNuMu phanm;
-// B01PhotoHadronAntiNuE phane;
-// B01PhotoHadronNuMu phnm;
-// B01PhotoHadronNuE phne;
-// B01PlanckianCMB plcmb;
-// B01Planckian pl;
-B01SSC p;
 
-void photohadron(char* file_path, char* output_path, double energy_proton_min, double energy_proton_max, double p_p, double E_cut)
+void photohadron(
+    const char* input_file_path, const char* output_dir_path,
+    double energy_proton_min, double energy_proton_max,
+    double p_p, double E_cut
+)
 {
-    // phg.Test();	//gamma
-    // php.Test();	//positron
-    // phe.Test();	//electron
-    // phanm.Test();//anti-nu_mu
-    // phane.Test();//anti-nu_e
-    // phnm.Test();	//nu_mu
-    // phne.Test();	//nu_e
-    p.Process(file_path, output_path, energy_proton_min, energy_proton_max, p_p, E_cut);
+    std::string data_file_test_dir = "/home/njvh/Documents/Science/gamma/agnprocesses/src/agnprocesses/data/PhotoHadronData/";
+    B01SSC *p = new B01SSC(data_file_test_dir, std::string(input_file_path), std::string(output_dir_path));
+
+    p->Process(energy_proton_min, energy_proton_max, p_p, E_cut);
 }
 
 int main()
 {
-    photohadron("test", "test", 1.0, 2.0, 3.0, 4.0);
+    const char* filepath = "test";
+    const char* output = "test";
+    photohadron(filepath, output, 1.0, 2.0, 3.0, 4.0);
     return 0;
 }

@@ -42,6 +42,7 @@ setup(
     author_email="podlesnyi.ei14@physics.msu.ru",
     license="GPLv3",
     package_dir={"": "src"},
+    include_package_data=True,
     packages=["agnprocesses"],
     ext_modules=[bh_ext, ggir_ext, ggpp_ext],
 )
