@@ -10,47 +10,13 @@ from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
 
+from agnprocesses.ext.pgamma import pgamma
+from .ext_io import get_io_paths, DATA_DIR
 from . import spectra as spec
 
 
-def pgamma_install(dev_mode=True):
-    try:
-        with open('processes/logs/pgamma-log', mode='r') as f:
-            pgamma_install_flag = int(f.read(1))
-            f.close()
-    except:
-        pgamma_install_flag = 0
-    if pgamma_install_flag == 0 or dev_mode == True:
-        # %% 1. creating .o files
-        print("1. Creating .o files...")
-        ########################################################################
-        cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/PhotoHadron.cpp -o bin/shared/PhotoHadron.o"
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ########################################################################
-        cmd = "g++ -c -fPIC processes/c_codes/PhotoHadron/pgamma.cpp -o bin/shared/pgamma.o"
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ########################################################################
-        print('Done!')
-        # % % 2. creating a library file .so
-        print("2. Creating an .so library file...")
-        cmd = 'g++ -shared bin/shared/PhotoHadron.o bin/shared/pgamma.o -o bin/shared/libPhotoHadron.so'
-        # cmd = 'gcc -shared bin/shared/pgamma.o -o bin/shared/libPhotoHadron.so'
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        print('Done!')
-        # %% 3. installing setup.py, i.e. installing the module
-        print("3. Installing the module...")
-        cmd = 'python setup-pgamma.py install'
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        print(str(cmdout))
-        print('Done!')
-        # %% 4. Completed
-        print("4.Installation of photohadron (pgamma) meson production secondaries library completed.")
-        with open('processes/logs/pgamma-log', mode='w') as f:
-            f.write('1')
-            f.close()
-    else:
-        pass
-    return None
+pgamma_in, pgamma_out = get_io_paths('pgamma_ext_io')
+pgamma_data_dir = DATA_DIR / 'PhotoHadronData'
 
 
 def kelner_pgamma_calculate(field,
@@ -60,9 +26,7 @@ def kelner_pgamma_calculate(field,
                             e_cut_p=-1,
                             C_p=1.0 / (u.eV),
                             background_photon_energy_unit=u.eV,
-                            background_photon_density_unit=(
-                                u.eV * u.cm**3)**(-1),
-                            dev_mode=True):
+                            background_photon_density_unit=(u.eV * u.cm**3)**(-1)):
     """
     energy_proton_min is the minimum proton energy
     (must be an astropy Quantity of energy or float (in the latter case it will
@@ -99,8 +63,6 @@ def kelner_pgamma_calculate(field,
     except AttributeError:
         raise AttributeError(
             "Make sure that background_photon_energy_unit is in energy units, background_photon_density_unit is in [energy * volume]**(-1) units.")
-    pgamma_install(dev_mode=dev_mode)
-    import pgamma_ext
     ###########################################################################
     if type(field) == type(''):
         try:
@@ -119,8 +81,8 @@ def kelner_pgamma_calculate(field,
     if field[:, 0].shape[0] > 100:
         raise NotImplementedError(
             "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)")
-    proton_target_path = 'processes/c_codes/PhotoHadron/input/field.txt'
-    np.savetxt(proton_target_path, field, fmt='%.6e')
+    photon_field_path = pgamma_in / 'field.txt'
+    np.savetxt(photon_field_path, field, fmt='%.6e')
     ###########################################################################
     try:
         energy_proton_min = energy_proton_min.to(u.eV)
@@ -142,25 +104,26 @@ def kelner_pgamma_calculate(field,
         else:
             e_cut_p = (e_cut_p * const.m_p * const.c**2).to(u.eV)
     ###########################################################################
-    pgamma_ext.pgamma(proton_target_path,
-                      energy_proton_min.value,
-                      energy_proton_max.value,
-                      p_p, e_cut_p.value)
+    pgamma(
+        str(pgamma_data_dir),
+        str(photon_field_path),
+        str(pgamma_out),
+        energy_proton_min.value,
+        energy_proton_max.value,
+        p_p, e_cut_p.value
+    )
     ###########################################################################
-    neutrino = np.loadtxt(
-        'processes/c_codes/PhotoHadron/output/neutrino_SED.txt')
+    neutrino = np.loadtxt(pgamma_out / 'neutrino_SED.txt')
     neutrino_e = neutrino[:, 0] * u.eV
     neutrino_sed = neutrino[:, 1] * (u.eV * u.s**(-1))
     neutrino_sed = neutrino_sed * C_p / (1.0 / u.eV)
     ###########################################################################
-    electron = np.loadtxt(
-        'processes/c_codes/PhotoHadron/output/electron_SED.txt')
+    electron = np.loadtxt(pgamma_out / 'electron_SED.txt')
     electron_e = electron[:, 0] * u.eV
     electron_sed = electron[:, 1] * (u.eV * u.s**(-1))
     electron_sed = electron_sed * C_p / (1.0 / u.eV)
     ###########################################################################
-    gamma = np.loadtxt(
-        'processes/c_codes/PhotoHadron/output/gamma_SED.txt')
+    gamma = np.loadtxt(pgamma_out / 'gamma_SED.txt')
     gamma_e = gamma[:, 0] * u.eV
     gamma_sed = gamma[:, 1] * (u.eV * u.s**(-1))
     gamma_sed = gamma_sed * C_p / (1.0 / u.eV)
@@ -168,8 +131,3 @@ def kelner_pgamma_calculate(field,
     return (neutrino_e, neutrino_sed,
             electron_e, electron_sed,
             gamma_e, gamma_sed)
-
-
-def test():
-    print("pgamma.py imported successfully.")
-    return None

@@ -33,6 +33,14 @@ ggpp_ext = Extension(
     **extension_kwargs,
 )
 
+PGAMMA_DIR = EXT_PATH / "PhotoHadron"
+pgamma_ext = Extension(
+    "agnprocesses.ext.pgamma",
+    sources=[str(PGAMMA_DIR / "pgamma_ext.cpp")],
+    libraries=["PhotoHadron"],
+    **extension_kwargs,
+)
+
 
 setup(
     name="agnprocesses",
@@ -44,5 +52,5 @@ setup(
     package_dir={"": "src"},
     include_package_data=True,
     packages=["agnprocesses"],
-    ext_modules=[bh_ext, ggir_ext, ggpp_ext],
+    ext_modules=[bh_ext, ggir_ext, ggpp_ext, pgamma_ext],
 )

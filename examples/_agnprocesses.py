@@ -9,16 +9,7 @@ It includes:
 - Bethe-Heitler (BH) proton pair production on photon field
 - and more
 """
-# %% import
-import processes.cosmology as cosmology
-import processes.synchro as synchro
-import processes.ic as ic
-import processes.spectra as spec
-import processes.pgamma as pgamma
-import processes.bh as bh
-import processes.gamma_gamma as gamma_gamma
-import processes.ebl as ebl
-###############################################################################
+
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
@@ -27,9 +18,10 @@ from matplotlib.ticker import (MultipleLocator,
                                FormatStrFormatter,
                                AutoMinorLocator)
 import matplotlib.ticker as ticker
-import subprocess  # to run prompt scripts from python
 from scipy.integrate import simps
 
+from agnprocesses import cosmology, synchro, ic, pgamma, bh, gamma_gamma, ebl
+from agnprocesses import spectra as spec
 
 if __name__ == '__main__':
     # Repeat the external photon field model vAPR47

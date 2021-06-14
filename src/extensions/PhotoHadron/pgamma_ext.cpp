@@ -6,17 +6,19 @@
 static PyObject *
 pgamma(PyObject *self, PyObject *args)
 {
+    char *data_path;
     char *file_path;
     char *output_path;
     double energy_proton_min, energy_proton_max;
     double p_p;
     double E_cut;
-    //
-    if (!PyArg_ParseTuple(args, "ssdddd", &file_path, &output_path, &energy_proton_min, &energy_proton_max, &p_p, &E_cut))
+    if (!PyArg_ParseTuple(
+        args, "sssdddd",
+        &data_path, &file_path, &output_path,
+        &energy_proton_min, &energy_proton_max, &p_p, &E_cut
+    ))
         return NULL;
-    //
-    photohadron(file_path, output_path, energy_proton_min, energy_proton_max, p_p, E_cut);
-    //
+    photohadron(data_path, file_path, output_path, energy_proton_min, energy_proton_max, p_p, E_cut);
     Py_RETURN_NONE;
 }
 
@@ -27,13 +29,13 @@ static PyMethodDef methods[] = {
 
 static struct PyModuleDef pgamma_ext = {
     PyModuleDef_HEAD_INIT,
-    "pgamma_ext",
+    "pgamma",
     "Implementation of Dzhatdoev's photohadron C++ codes",
     -1,
     methods
 };
 
-PyMODINIT_FUNC PyInit_pgamma_ext(void)
+PyMODINIT_FUNC PyInit_pgamma(void)
 {
     return PyModule_Create(&pgamma_ext);
 }

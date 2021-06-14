@@ -9,8 +9,11 @@ ggir_lib:
 ggpp_lib:
 	cd src/extensions/GammaGammaPairProduction && make lib
 
+ph_lib:
+	cd src/extensions/PhotoHadron && make lib
 
-install: bh_lib ggir_lib ggpp_lib
+
+install: bh_lib ggir_lib ggpp_lib ph_lib
 	python setup.py install
 
 clean:
