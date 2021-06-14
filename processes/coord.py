@@ -52,3 +52,11 @@ def get_sun_dec_fermi(t_fermi_sec):
         t = Time(fermi_met_to_utc(t_fermi_sec))
         x = get_sun(t)
         return((x.frame.dec.to(u.deg)).value)
+
+
+def ra_to_deg(hour, arcmin, arcsec):
+    return((hour + (1.0 / 60.0 * arcmin) + (1.0 / 3600.0 * arcsec)) * 15.0)
+
+
+def dec_to_deg(deg, arcmin, arcsec):
+    return(deg + 1.0 / 60.0 * arcmin + 1.0 / 3600.0 * arcsec)
