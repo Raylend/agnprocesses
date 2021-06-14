@@ -1,3 +1,5 @@
+#include <string.h>
+
 #define B01SSCFlag	0
 #define SIZE_N_PHOTONS_SYNCHRO 100 ///!1111111!!!
 #define SIZE_X 500
@@ -47,7 +49,7 @@ class B01SSC
     //
     //
     void PrepareSSC(char *);
-    int Process(char* file_path, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext);
+    int Process(char* file_path, char* output_dir, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext);
     int Integrate(int proton_energy_number);
     // void read_protons_parameters();
     double proton_spectrum(double E_p_eV, double p_p, double E_cut_p);
@@ -64,6 +66,8 @@ class B01SSC
     B01PhotoHadronAntiNuMu phanm;
     B01PhotoHadronNuE phne;
     B01PhotoHadronAntiNuE phane;
+  private:
+    char* output_dir_path;
 };
 
 B01SSC::B01SSC()
@@ -75,19 +79,6 @@ B01SSC::~B01SSC()
 void B01SSC::PrepareSSC(char * file_path)
 {
     FILE * fd;
-    FILE * fp;
-    fp = fopen("processes/c_codes/PhotoHadron/output/log", "a");
-    if (fp == NULL)
-    {
-        printf("Cannot create log!\n");
-    }
-    else
-    {
-        fprintf(fp, "Reading the following photon field:\n");
-        fputs(file_path, fp);
-        fprintf(fp, "\n");
-    }
-    fclose(fp);
     // fd = fopen("processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt", "r");
     fd = fopen(file_path, "r");
     if (fd == NULL)
@@ -106,8 +97,10 @@ void B01SSC::PrepareSSC(char * file_path)
     fclose(fd);
 }
 
-int B01SSC::Process(char* file_path, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext)
+int B01SSC::Process(char* file_path, char* output_dir, double energy_proton_min_ext, double energy_proton_max_ext, double p_p_ext, double E_cut_ext)
 {
+    output_dir_path = output_dir;
+
     printf("Performing calculations of proton-photon meson production secondaries SED...\n");
     energy_proton_min = energy_proton_min_ext;
     energy_proton_max = energy_proton_max_ext;
@@ -370,7 +363,9 @@ void B01SSC::FinalSED()
             max = SED_neutrino_final[l];
         }
     }
-    fp = fopen("processes/c_codes/PhotoHadron/output/neutrino_SED.txt", "w");
+    char* neutrino_sed_output_path = output_dir_path;
+    strcat(neutrino_sed_output_path, "neutrino_SED.txt");
+    fp = fopen(neutrino_sed_output_path, "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
@@ -405,7 +400,9 @@ void B01SSC::FinalSED()
             max = SED_electron_final[l];
         }
     }
-    fp = fopen("processes/c_codes/PhotoHadron/output/electron_SED.txt", "w");
+    char* electron_sed_output_path = output_dir_path;
+    strcat(electron_sed_output_path, "electron_SED.txt");
+    fp = fopen(electron_sed_output_path, "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
@@ -436,7 +433,9 @@ void B01SSC::FinalSED()
             max = SED_gamma_final[l];
         }
     }
-    fp = fopen("processes/c_codes/PhotoHadron/output/gamma_SED.txt", "w");
+    char* gamma_sed_output_path = output_dir_path;
+    strcat(gamma_sed_output_path, "gamma_SED.txt");
+    fp = fopen(gamma_sed_output_path, "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");

@@ -1,1 +1,1 @@
-void photohadron(char*, double, double, double, double);
+void photohadron(char*, char*, double, double, double, double);

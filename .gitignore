@@ -261,22 +261,7 @@ Thumbs.db
 # Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
 
 auxiliary.py
-*.log
-trash.py
 test_figures/*
-processes/c_codes/PhotoHadron/input/*
-processes/c_codes/PhotoHadron/output/*
-*.pyc
-*.o
-*.so
-processes/logs/*
-processes/c_codes/BHPairProduction/input/*
-processes/c_codes/BHPairProduction/output/*
-processes/c_codes/GammaGammaPairProduction/input/*
-processes/c_codes/GammaGammaPairProduction/output/*
-processes/c_codes/GammaGammaInteractionRate/input/*
-processes/c_codes/GammaGammaInteractionRate/output/*
-*.npy
 
 # venv environment folders
 agnenv

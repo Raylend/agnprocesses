@@ -1,5 +1,5 @@
 #define PY_SSIZE_T_CLEAN
-#include "/home/raylend/anaconda3/include/python3.7m/Python.h"
+#include "Python.h"
 
 #include "PhotoHadron.h"
 
@@ -7,14 +7,15 @@ static PyObject *
 pgamma(PyObject *self, PyObject *args)
 {
     char *file_path;
+    char *output_path;
     double energy_proton_min, energy_proton_max;
     double p_p;
     double E_cut;
     //
-    if (!PyArg_ParseTuple(args, "sdddd", &file_path, &energy_proton_min, &energy_proton_max, &p_p, &E_cut))
+    if (!PyArg_ParseTuple(args, "ssdddd", &file_path, &output_path, &energy_proton_min, &energy_proton_max, &p_p, &E_cut))
         return NULL;
     //
-    photohadron(file_path, energy_proton_min, energy_proton_max, p_p, E_cut);
+    photohadron(file_path, output_path, energy_proton_min, energy_proton_max, p_p, E_cut);
     //
     Py_RETURN_NONE;
 }
