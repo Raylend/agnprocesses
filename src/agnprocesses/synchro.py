@@ -7,13 +7,8 @@ from astropy import units as u
 from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
-try:
-    import processes.spectra as spec
-except:
-    try:
-        import spectra as spec
-    except:
-        raise ImportError("a problem with importing spectra.py occured")
+
+from . import spectra as spec
 
 
 def derishev_q_function(x):

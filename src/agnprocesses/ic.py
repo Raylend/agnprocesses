@@ -5,19 +5,8 @@ from astropy import units as u
 from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
-import matplotlib.pyplot as plt
-try:
-    import processes.spectra as spec
-except:
-    try:
-        import spectra as spec
-    except:
-        raise ImportError("a problem with importing spectra.py occured")
 
-
-def test():
-    print("ic.py imported successfully.")
-    return None
+from . import spectra as spec
 
 
 def inverse_compton_base(alpha, g, alpha1):
@@ -442,7 +431,6 @@ def inverse_compton_spec(
 
 
 if __name__ == '__main__':
-    spec.test()
     eps = np.logspace(-10, -2, 1000) * u.eV
     eps = eps.reshape(eps.shape[0], 1)
     T = 2.7 * u.K

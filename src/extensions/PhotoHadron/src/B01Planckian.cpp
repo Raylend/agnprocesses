@@ -58,13 +58,13 @@ int B01Planckian::Process()
     int i;
     double T,Ep,deps;
     //
-    fpa= fopen((data_dir + "Active").c_str(),"w");
+    fpa= fopen((data_dir + "/Active").c_str(),"w");
     if (fpa == NULL)
     {
         printf("Couldn't create or read the file!\n");
         exit(1);
     }
-    fpn= fopen((data_dir + "Neutrino").c_str(),"w");
+    fpn= fopen((data_dir + "/Neutrino").c_str(),"w");
     if (fpn == NULL)
     {
         printf("Couldn't create or read the file!\n");

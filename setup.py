@@ -16,7 +16,6 @@ bh_ext = Extension(
     **extension_kwargs,
 )
 
-
 GGIR_DIR = EXT_PATH / "GammaGammaInteractionRate"
 ggir_ext = Extension(
     "agnprocesses.ext.ggir",

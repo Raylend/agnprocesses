@@ -6,10 +6,11 @@ Currently available EBL models:
 2) to be added
 """
 from astropy import units as u
-from astropy import constants as const
 import numpy as np
-from scipy.integrate import simps
-from scipy import interpolate
+
+from .data_files import DATA_DIR
+
+GILMORE_TAU_DATA = DATA_DIR / 'EBL_models/Tau-G12'
 
 
 def tau_gilmore(energy, redshift):
@@ -25,7 +26,7 @@ def tau_gilmore(energy, redshift):
         energy = energy.to(u.eV)
     except:
         raise ValueError("energy must be in any astropy energy units!")
-    tau = np.loadtxt("processes/EBL_models/Tau-G12")
+    tau = np.loadtxt(GILMORE_TAU_DATA)
     z_tau = tau[0, 1:]
     e_tau = (tau[1:, 0] * u.TeV).to(u.eV)
     TAU = tau[1:, 1:]

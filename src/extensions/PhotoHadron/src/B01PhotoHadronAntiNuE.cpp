@@ -65,7 +65,7 @@ int B01PhotoHadronAntiNuE::Test()
     //
     //fp= fopen("PhotoHadron-AntiNuE-3.0","w");
     //fp= fopen("PhotoHadron-AntiNuE-5.0","w");
-    fp= fopen((data_dir + "PhotoHadron-AntiNuE-30").c_str(), "w");
+    fp= fopen((data_dir + "/PhotoHadron-AntiNuE-30").c_str(), "w");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");
@@ -86,7 +86,7 @@ int B01PhotoHadronAntiNuE::ReadTable()
     int i;
     double rd;
     FILE *fp;
-    fp= fopen((data_dir + "AntiNuE").c_str(), "r");
+    fp= fopen((data_dir + "/AntiNuE").c_str(), "r");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");

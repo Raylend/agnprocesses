@@ -25,13 +25,13 @@ static PyMethodDef methods[] = {
 
 static struct PyModuleDef pair_ext_module = {
     PyModuleDef_HEAD_INIT,
-    "pair",
+    "ggpp",
     "Implementation of Egor Podlesnyi's gamma-gamma pair production C codes. Input gamma-ray SED is considred as the SED of absorbed gamma-rays, so before using this code you should multiply your gamma-ray SED by (1 - exp(-tau)).",
     -1,
     methods
 };
 
-PyMODINIT_FUNC PyInit_pair_ext(void)
+PyMODINIT_FUNC PyInit_ggpp(void)
 {
     return PyModule_Create(&pair_ext_module);
 }

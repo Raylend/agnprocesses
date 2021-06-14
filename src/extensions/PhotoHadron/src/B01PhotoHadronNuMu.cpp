@@ -53,7 +53,7 @@ int B01PhotoHadronNuMu::Test()
     FindParameters(eta);
     //
     //fp= fopen("PhotoHadron-NuMu-1.5","w");
-    fp= fopen((data_dir + "PhotoHadron-NuMu-30").c_str(), "w");
+    fp= fopen((data_dir + "/PhotoHadron-NuMu-30").c_str(), "w");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");
@@ -89,7 +89,7 @@ int B01PhotoHadronNuMu::ReadTable()
     double rd;
     FILE *fp;
     //
-    fp = fopen((data_dir + "NuMu").c_str(), "r");
+    fp = fopen((data_dir + "/NuMu").c_str(), "r");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");

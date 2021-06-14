@@ -108,10 +108,7 @@ void pair_calculate(char *photon_file, char *gamma_file, char *output_file)
     }
     for (int i = 0; i < SIZE_ENERGY; i++)
     {
-        if (SED_pair_VHE[i] >= 1.0e-05 * temp1)
-        {
-            fprintf(fp, "%le    %le\n", energy_pair_VHE[i], SED_pair_VHE[i]);
-        }
+        fprintf(fp, "%le    %le\n", energy_pair_VHE[i], SED_pair_VHE[i]);
     }
     fclose(fp);
     printf("Gamma-gamma pair production calculated successfully.\n");

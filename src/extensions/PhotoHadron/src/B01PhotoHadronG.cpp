@@ -68,7 +68,7 @@ int B01PhotoHadronG::Test()
     //fp= fopen("PhotoHadron-Gamma-1.5","w");
     //fp= fopen("PhotoHadron-Gamma-3.0","w");
     //fp= fopen("PhotoHadron-Gamma-10","w");
-    fp= fopen((data_dir + "PhotoHadron-Gamma-30").c_str(), "w");
+    fp= fopen((data_dir + "/PhotoHadron-Gamma-30").c_str(), "w");
     if (fp == NULL)
     {
         printf("Couldn't create the PhotoHadron-Gamma-30 file!\n");
@@ -90,10 +90,10 @@ int B01PhotoHadronG::ReadTable()
     int i;
     double rd;
     FILE *fp;
-    fp = fopen((data_dir + "Gamma").c_str(), "r");
+    fp = fopen((data_dir + "/Gamma").c_str(), "r");
     if (fp == NULL)
     {
-        printf("Couldn't find Data/Gamma!\n");
+        printf("Couldn't find Gamma data in %s!\n", (data_dir + "/Gamma").c_str());
         exit(1);
     }
     fscanf(fp,"%d",&ng);

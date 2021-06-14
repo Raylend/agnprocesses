@@ -10,10 +10,9 @@ See Kelner, & Aharonian Phys. Rev. D 78, 034013 (2008).
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
-from pathlib import Path
 
 import agnprocesses.ext.bh as bh_ext
-from .ext_io import get_io_paths
+from .data_files import get_io_paths
 
 
 inpath, outpath = get_io_paths('bh_ext_io')

@@ -390,7 +390,7 @@ void B01SSC::FinalSED()
             max = SED_neutrino_final[l];
         }
     }
-    fp = fopen((output_dir_path + "neutrino_SED.txt").c_str(), "w");
+    fp = fopen((output_dir_path + "/neutrino_SED.txt").c_str(), "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
@@ -425,7 +425,7 @@ void B01SSC::FinalSED()
             max = SED_electron_final[l];
         }
     }
-    fp = fopen((output_dir_path + "electron_SED.txt").c_str(), "w");
+    fp = fopen((output_dir_path + "/electron_SED.txt").c_str(), "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");
@@ -456,7 +456,7 @@ void B01SSC::FinalSED()
             max = SED_gamma_final[l];
         }
     }
-    fp = fopen((output_dir_path + "gamma_SED.txt").c_str(), "w");
+    fp = fopen((output_dir_path + "/gamma_SED.txt").c_str(), "w");
     if (fp == NULL)
     {
         printf("Cannot create the file!\n");

@@ -5,7 +5,6 @@ energetic particles spectra.
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
-from scipy.integrate import simps
 from scipy import interpolate
 
 

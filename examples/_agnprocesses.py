@@ -270,8 +270,8 @@ if __name__ == '__main__':
     print("bh_synchro_sed.unit = {}".format(bh_synchro_sed.unit))
     ###########################################################################
     # Data from Science: gamma-rays
-    data = np.loadtxt(
-        'data/science-2017_gamma_flare_electromagnetic_component_v2.txt')
+    from agnprocesses.data_files import DATA_DIR
+    data = np.loadtxt(DATA_DIR / 'science-2017_gamma_flare_electromagnetic_component_v2.txt')
     data_en = data[:, 0]
     data_sed = data[:, 1]
     data_low = data[:, 3]

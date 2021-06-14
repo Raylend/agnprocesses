@@ -11,7 +11,7 @@ import numpy as np
 from scipy.integrate import simps
 
 from agnprocesses.ext.pgamma import pgamma
-from .ext_io import get_io_paths, DATA_DIR
+from .data_files import get_io_paths, DATA_DIR
 from . import spectra as spec
 
 

@@ -58,7 +58,7 @@ int B01PhotoHadronP::Test()
     //fp= fopen("PhotoHadron-Positron-1.5","w");
     //fp= fopen("PhotoHadron-Positron-3.0","w");
     //fp= fopen("PhotoHadron-Positron-10","w");
-    fp= fopen((data_dir + "PhotoHadron-Positron-30").c_str(), "w");
+    fp= fopen((data_dir + "/PhotoHadron-Positron-30").c_str(), "w");
     //fp= fopen("PhotoHadron-Positron-100","w");
     if (fp == NULL)
     {
@@ -94,7 +94,7 @@ int B01PhotoHadronP::ReadTable()
     int i;
     double rd;
     FILE *fp;
-    fp = fopen((data_dir + "Positron").c_str(), "r");
+    fp = fopen((data_dir + "/Positron").c_str(), "r");
     if (fp == NULL)
     {
         printf("Couldn't create or read the file!\n");

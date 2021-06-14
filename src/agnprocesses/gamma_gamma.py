@@ -10,10 +10,10 @@ import numpy as np
 
 import agnprocesses.ext.ggir as ggir_ext
 import agnprocesses.ext.ggpp as ggpp_ext
-from .ext_io import get_io_paths
+from .data_files import get_io_paths
 
 
-ggpp_in, ggpp_out = get_io_paths('ggpp_io_ext')
+ggpp_in, ggpp_out = get_io_paths('ggpp_ext_io')
 
 
 def pair_production(field,
@@ -109,7 +109,7 @@ def pair_production(field,
     return (pair_e, pair_sed)
 
 
-ggir_in, ggir_out = get_io_paths('ggir_io_ext')
+ggir_in, ggir_out = get_io_paths('ggir_ext_io')
 
 
 def interaction_rate(field,
