@@ -172,6 +172,9 @@ def inverse_compton_spec(
     en_min=None,
     en_max=None,
     en_mono=None,
+    electron_table=None,
+    user_en_unit=u.eV,
+    user_spec_unit=u.dimensionless_unscaled,
     en_ref=1.0 * u.eV,
     number_of_integration=100,
     particle_mass=const.m_e.cgs,
@@ -214,7 +217,8 @@ def inverse_compton_spec(
     """
     ############################################################################
     valid_spec_laws = ['power_law', 'broken_power_law',
-                       'exponential_cutoff', 'monoenergetic']
+                       'exponential_cutoff', 'monoenergetic',
+                       'user']
     if spec_law not in valid_spec_laws:
         raise ValueError("Invalid spec_law. It must be one of {}"
                          .format(valid_spec_laws))
@@ -371,9 +375,68 @@ def inverse_compton_spec(
                 en_max, norm, en_ref correctly"
             )
     ###########################################################################
+    elif spec_law == 'user':
+        par_list = [electron_table, user_en_unit, user_spec_unit]
+        if all(el is not None for el in par_list):
+            # checking electron_table
+            if type(electron_table) == type(''):
+                try:
+                    electron_table = np.loadtxt(electron_table)
+                    ee = (electron_table[:, 0] *
+                          user_en_unit * u.dimensionless_unscaled)
+                    electron_spectrum = (electron_table[:, 1] *
+                                         user_spec_unit * u.dimensionless_unscaled)
+                except:
+                    raise ValueError(
+                        "Cannot read 'electron_table'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / spectrum (dN/dE)).\nTry to use an absolute path.")
+            elif type(electron_table) == type(np.array(([2, 1], [5, 6]))):
+                ee = (electron_table[:, 0] *
+                      user_en_unit * u.dimensionless_unscaled)
+                electron_spectrum = (electron_table[:, 1] *
+                                     user_spec_unit * u.dimensionless_unscaled)
+            else:
+                raise ValueError(
+                    "Invalid value of 'electron_table'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / spectrum (dN/dE)).")
+
+            def underintegral(i):
+                energy = ee[i]
+                return(
+                    (inverse_compton_over_photon_field(alpha,
+                                                       energy,
+                                                       field,
+                                                       particle_mass=particle_mass,
+                                                       particle_charge=particle_charge,
+                                                       background_photon_energy_unit=background_photon_energy_unit,
+                                                       background_photon_density_unit=background_photon_density_unit)).value *
+                    electron_spectrum[i].value
+                )
+            #y = np.array(list(map(underintegral, ee)))
+            y = np.zeros((ee.shape[0], alpha.shape[0]))
+            for i in range(0, ee.shape[0]):
+                y[i, :] = underintegral(i)
+            f = np.array(list(
+                map(
+                    lambda i: simps(y[:, i].reshape(ee.shape), ee.value),
+                    range(0, alpha.shape[0])
+                )
+            )
+            ) * (inverse_compton_over_photon_field(alpha,
+                                                   ee[0],
+                                                   field,
+                                                   particle_mass=particle_mass,
+                                                   particle_charge=particle_charge,
+                                                   background_photon_energy_unit=background_photon_energy_unit,
+                                                   background_photon_density_unit=background_photon_density_unit)).unit * \
+                electron_spectrum.unit
+            # f = f.decompose(['eV', 's', 'cm'], u.mass_energy())
+        else:
+            raise ValueError(
+                "Make sure you defined all of electron_table, user_en_unit, user_spec_unit correctly"
+            )
+    ###########################################################################
     else:
         raise ValueError(
-            f"Unknown charged particle spectrum type, valid are: {valid_spec_laws}")
+            f"Unknown charged particle spectrum type. The valid ones are: {valid_spec_laws}")
 
     return f
 

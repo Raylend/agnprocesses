@@ -4,7 +4,7 @@
 #define SIZE_ENERGY_NEUTRINO 5000
 #define SIZE_ENERGY_ELECTRON 5000
 #define SIZE_ENERGY_GAMMA 5000
-#define N_PROTON 50
+#define N_PROTON 100
 #define NEUTRINO_OSCILLATION_FACTOR 0.33333333
 #define MINIMAL_FRACTION 1.0e-04
 // #define KELNER_KOEFFICIENT 3.229068e-13
@@ -99,14 +99,10 @@ void B01SSC::PrepareSSC(char * file_path)
     {
         printf("The photon field file has been read successfully.\n");
     }
-    // for (int i = 0; i < SIZE_N_PHOTONS_SYNCHRO; i++)
-    int i = 0;
-    while(!feof(fd))
+    for (int i = 0; i < SIZE_N_PHOTONS_SYNCHRO; i++)
     {
         fscanf(fd, "%le %le", &epsilon_synchro[i], &nph_synchro[i]);
-        i++;
     }
-    i = 0;
     fclose(fd);
 }
 
@@ -123,16 +119,16 @@ int B01SSC::Process(char* file_path, double energy_proton_min_ext, double energy
     const double a_p = log10(energy_proton_max / energy_proton_min) / (double)N_PROTON;
     //
     //
-    const double energy_neutrino_min = energy_proton_min*1.0e-03; //eV
-    const double energy_neutrino_max = energy_proton_max * 0.99; // eV
+    const double energy_neutrino_min = 1.0e+12; //eV
+    const double energy_neutrino_max = energy_proton_max * 0.75; // eV
     const double a_neu = log10(energy_neutrino_max/energy_neutrino_min)/(double)SIZE_ENERGY_NEUTRINO;
     //
-    const double energy_electron_min = energy_proton_min*1.0e-03; // eV
-    const double energy_electron_max = energy_proton_max * 0.99; // eV
+    const double energy_electron_min = 1.0e+12; // eV
+    const double energy_electron_max = energy_proton_max * 0.75; // eV
     const double a_e = log10(energy_electron_max/energy_electron_min)/(double)SIZE_ENERGY_ELECTRON;
     //
-    const double energy_gamma_min = energy_proton_min*1.0e-03; // eV
-    const double energy_gamma_max = energy_proton_max * 0.99; // eV
+    const double energy_gamma_min = 1.0e+12; // eV
+    const double energy_gamma_max = energy_proton_max * 0.75; // eV
     const double a_g = log10(energy_gamma_max/energy_gamma_min)/(double)SIZE_ENERGY_GAMMA;
     // neutrinos
     for (int k = 0; k < SIZE_ENERGY_NEUTRINO; k++)
@@ -214,7 +210,7 @@ int B01SSC::Integrate(int proton_energy_number)
         sne = 0.0;
         sane= 0.0;
         // do not change 1.0e-4 without changing it in other places! (we need to parametrize it ASAP)
-        x = MINIMAL_FRACTION*pow(10.0,a_frac*(double)j);		//x= (E_{gamma}/E_{p}); (E_e/E_{p}), (...)
+        x = MINIMAL_FRACTION*pow(10.0,a_frac*(double)j); //x= (E_{gamma}/E_{p}); (E_e/E_{p}), (...)
         for (i=1; i<SIZE_N_PHOTONS_SYNCHRO; i++)
         //integrate over photon field energy eps: SIZE_N_PHOTONS_SYNCHRO different values of eps
         {

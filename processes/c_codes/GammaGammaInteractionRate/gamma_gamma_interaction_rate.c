@@ -8,7 +8,7 @@
 #define ELECTRON_REST_ENERGY 5.1100e+05 // eV
 #define THOMSON_CROSS_SECTION 6.6524e-25 // cm^2
 #define CM_TO_EV  5.068e+04
-#define SIZE_PHOTON_FIELD 100
+#define SIZE_PHOTON_FIELD 6852
 #define SIZE_ENERGY 100
 //
 //
@@ -58,6 +58,10 @@ void gamma_gamma_interaction_rate_internal(char *photon_path, double E_min, doub
     }
     for (int i = 0; i < SIZE_ENERGY; i++)
     {
+        // if (i % 10 == 0)
+        // {
+        //     printf("%le\n", rate[i]);
+        // }
         if (rate[i] > 0)
         {
             fprintf(fp, "%le    %le\n", energy[i], rate[i]);
@@ -95,6 +99,10 @@ void read_photon_field(char *path)
     for (int i = 0; i < SIZE_PHOTON_FIELD; i++)
     {
         fscanf(fp, "%le %le", &epsilon[i], &density[i]);
+        // if (i % 100 == 0)
+        // {
+        //     printf("%le %le\n", epsilon[i], density[i]);
+        // }
     }
     fclose(fp);
     printf("Photon field has been read successfully.\n");
@@ -146,7 +154,7 @@ double r_underint(double s, double E)
 double gamma_gamma_rate(double E)
 {
     double s_max = 4.0*E*epsilon[SIZE_PHOTON_FIELD - 1];
-    const unsigned int n_int = 100;
+    const unsigned int n_int = 1000;
     double a_s = log10(s_max/s_min) / (double) n_int;
     double s[n_int];
     for (int l = 0; l < n_int; l++)

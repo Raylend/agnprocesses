@@ -7,11 +7,12 @@
 #define THOMSON_CROSS_SECTION 6.6524e-25 // cm^2
 #define SPEED_OF_LIGHT 2.998e+10 // cm/s
 #define CM_TO_EV  5.068e+04
-#define SIZE_PHOTON_FIELD 1000
+#define SIZE_PHOTON_FIELD 6852
 #define CONST_GAMMA_VHE 5000
-#define SIZE_ENERGY 30
+#define SIZE_ENERGY 100
 #define SMALLD 1.0e-40
-#define ENERGY_GAMMA_VHE_THRESHOLD 3.0e+10/ELECTRON_REST_ENERGY // eV
+// #define ENERGY_GAMMA_VHE_THRESHOLD 3.0e+10/ELECTRON_REST_ENERGY // eV
+#define ENERGY_GAMMA_VHE_THRESHOLD SMALLD //3.0e+08/ELECTRON_REST_ENERGY // eV
 //
 //
 int SIZE_GAMMA_VHE;
@@ -145,7 +146,7 @@ void read_photon_field(char *photon_file)
 
 void read_gamma_VHE(char *gamma_file)
 {
-    int del = 10;
+    int del = 1;
     FILE * fp;
     double rd1, rd2;
     fp = fopen(gamma_file, "r");
@@ -168,7 +169,7 @@ void read_gamma_VHE(char *gamma_file)
                 spectrum_gamma[j] = rd2 / (rd1 * rd1) * ELECTRON_REST_ENERGY;
                 energy_gamma[j] = rd1 / ELECTRON_REST_ENERGY;
                 SED_gamma[j] = rd2;
-                // printf("%le %le\n", energy_gamma[j], SED_gamma[j]);
+                printf("%le %le\n", energy_gamma[j], SED_gamma[j]);
             }
         }
         else
@@ -178,21 +179,28 @@ void read_gamma_VHE(char *gamma_file)
     }
     fclose(fp);
     SIZE_GAMMA_VHE = j;
-    E_min = 1.0e+09; // eV
+    E_min = 1.0e+07; // eV
     // E_max = energy_gamma[SIZE_GAMMA_VHE - 1] * ELECTRON_REST_ENERGY; // eV
-    E_max = 1.0e+17; // eV
+    E_max = 3.0e+11; // eV
     aE = log10(E_max/E_min) / (double)SIZE_ENERGY;
     printf("Gamma-ray SED has been read successfully.\n");
 }
 
 double r_function(double gamma, double gamma_)
 {
+    double ans;
     if ((gamma <  SMALLD) || (gamma_ < SMALLD))
     {
-        printf("(gamma <  SMALLD) || (gamma_ < SMALLD)\n");
-        exit(1);
+        // printf("(gamma <  SMALLD) || (gamma_ < SMALLD)\n");
+        // printf("gamma = %le, gamma_ = %le", gamma, gamma_);
+        // exit(1);
+        ans = 0;
     }
-    return (0.5 * (gamma / gamma_ + gamma_ / gamma));
+    else
+    {
+        ans = (0.5 * (gamma / gamma_ + gamma_ / gamma));
+    }
+    return ans;
 }
 
 double soft_underint(double n0, double eps, double e_gamma, double E_star, double r)

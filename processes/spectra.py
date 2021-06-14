@@ -66,6 +66,7 @@ def exponential_cutoff(en,
 def greybody_spectrum(en,
                       temperature,
                       dilution=1.0):
+    # this function was cross-checked
     """
     returns greybody (blackbody for dilution = 1.0) spectrum in
     1 / (eV cm^3) units
@@ -110,11 +111,11 @@ def greybody_spectrum(en,
         raise ValueError("Invalid unit of en. It must be Hz or one of {}".
                          format(list_of_energies))
     ###########################################################################
-    x = (nu / nu_char).decompose()
+    x = (nu / nu_char).to(u.dimensionless_unscaled)  # decompose()
     s = (8 * np.pi * const.h * nu**3) / const.c**3 / (np.exp(x) - 1)
-    s /= const.h  # cm^{-3}
-    s /= energy  # [1 / (cm^3 eV)]
-    s *= dilution
+    s = s / const.h  # cm^{-3}
+    s = s / energy  # [1 / (cm^3 eV)]
+    s = s * dilution
     s = s.to(1.0 / (u.eV * u.cm**3))
     ###########################################################################
     return s

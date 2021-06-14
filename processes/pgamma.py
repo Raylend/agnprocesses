@@ -66,7 +66,9 @@ def kelner_pgamma_calculate(field,
                             e_cut_p=-1,
                             C_p=1.0 / (u.eV),
                             background_photon_energy_unit=u.eV,
-                            background_photon_density_unit=(u.eV * u.cm**3)**(-1)):
+                            background_photon_density_unit=(
+                                u.eV * u.cm**3)**(-1),
+                            dev_mode=True):
     """
     energy_proton_min is the minimum proton energy
     (must be an astropy Quantity of energy or float (in the latter case it will
@@ -103,7 +105,7 @@ def kelner_pgamma_calculate(field,
     except AttributeError:
         raise AttributeError(
             "Make sure that background_photon_energy_unit is in energy units, background_photon_density_unit is in [energy * volume]**(-1) units.")
-    pgamma_install()
+    pgamma_install(dev_mode=dev_mode)
     import pgamma_ext
     ###########################################################################
     if type(field) == type(''):

@@ -116,7 +116,7 @@ def pair_production(field,
     gamma is the string with the path to the gamma-ray energy/SED .txt file
     OR numpy array with 2 colums: the first column is the gamma-ray
     energy, the second columnn is the gamma-ray SED.
-    NB: gamma should contain SED of gamma-rays to be absorbed, i.e. the should
+    NB: gamma should contain SED of gamma-rays to be absorbed, i.e. they should
     be multiplied by (1 - exp(-tau))!
     Units in the gamma table must correspond to the gamma_energy_unit parameter
     and the gamma_sed_unit parameter.
@@ -159,9 +159,9 @@ def pair_production(field,
     else:
         raise ValueError(
             "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
-    if field[:, 0].shape[0] > 1000:
+    if field[:, 0].shape[0] > 7000:
         raise NotImplementedError(
-            "field should contain no more than 1000 strings (rows)! (more strings will be implemented in future)")
+            "field should contain no more than 7000 strings (rows)! (more strings will be implemented in future)")
     photon_path = 'processes/c_codes/GammaGammaPairProduction/input/photon_path.txt'
     np.savetxt(photon_path, field, fmt='%.6e')
     ###########################################################################
@@ -211,6 +211,8 @@ def interaction_rate(field,
 
     e_min, e_max are minimum and maximum gamma-ray energy correspondingly.
     They must be in astropy energy units.
+
+    Returns an tuple of 2 numpy columns: energy and interaction rate
     """
     try:
         e_min = e_min.to(u.eV)
@@ -245,9 +247,9 @@ def interaction_rate(field,
     else:
         raise ValueError(
             "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
-    if field[:, 0].shape[0] > 100:
+    if field[:, 0].shape[0] > 7000:
         raise NotImplementedError(
-            "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)")
+            "field should contain no more than 7000 strings (rows)! (more strings will be implemented in future)")
     photon_path = 'processes/c_codes/GammaGammaInteractionRate/input/photon_field.txt'
     np.savetxt(photon_path, field, fmt='%.6e')
     ###########################################################################
