@@ -25,6 +25,14 @@ ggir_ext = Extension(
     **extension_kwargs,
 )
 
+GGPP_DIR = EXT_PATH / "GammaGammaPairProduction"
+ggpp_ext = Extension(
+    "agnprocesses.ext.ggpp",
+    sources=[str(GGPP_DIR / "gamma-gamma_ext.cpp")],
+    libraries=["GammaGammaPairProduction"],
+    **extension_kwargs,
+)
+
 
 setup(
     name="agnprocesses",
@@ -35,5 +43,5 @@ setup(
     license="GPLv3",
     package_dir={"": "src"},
     packages=["agnprocesses"],
-    ext_modules=[bh_ext, ggir_ext],
+    ext_modules=[bh_ext, ggir_ext, ggpp_ext],
 )

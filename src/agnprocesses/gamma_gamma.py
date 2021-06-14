@@ -9,48 +9,11 @@ from astropy import units as u
 import numpy as np
 
 import agnprocesses.ext.ggir as ggir_ext
-
+import agnprocesses.ext.ggpp as ggpp_ext
 from .ext_io import get_io_paths
 
 
-
-def gamma_gamma_install(dev_mode=True):
-    try:
-        with open('processes/logs/gamma_gamma-log', mode='r') as f:
-            gamma_gamma_install_flag = int(f.read(1))
-            f.close()
-    except:
-        gamma_gamma_install_flag = 0
-    if gamma_gamma_install_flag == 0 or dev_mode == True:
-        # %% 1. creating .o files
-        print("1. Creating .o files...")
-        ########################################################################
-        cmd = "g++ -c -fPIC processes/c_codes/GammaGammaPairProduction/gamma-gamma-core.cpp -o bin/shared/gamma-gamma-core.o"
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ########################################################################
-        cmd = "g++ -c -fPIC processes/c_codes/GammaGammaPairProduction/gamma-gamma.cpp -o bin/shared/gamma-gamma.o"
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        ########################################################################
-        print('Done!')
-        # % % 2. creating a library file .so
-        print("2. Creating an .so library file...")
-        cmd = 'g++ -shared bin/shared/gamma-gamma-core.o bin/shared/gamma-gamma.o -o bin/shared/libGammaGammaPairProduction.so'
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        print('Done!')
-        # %% 3. installing setup.py, i.e. installing the module
-        print("3. Installing the module...")
-        cmd = 'python setup-gamma-gamma.py install'
-        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
-        print(str(cmdout))
-        print('Done!')
-        # %% 4. Completed
-        print("4.Installation of gamma-gamma pair production library completed.")
-        with open('processes/logs/gamma_gamma-log', mode='w') as f:
-            f.write('1')
-            f.close()
-    else:
-        pass
-    return None
+ggpp_in, ggpp_out = get_io_paths('ggpp_io_ext')
 
 
 def pair_production(field,
@@ -96,10 +59,6 @@ def pair_production(field,
     except AttributeError:
         raise AttributeError(
             "Make sure that gamma_energy_unit is in energy units.")
-    ###########################################################################
-    gamma_gamma_install()
-    import pair_ext
-    ###########################################################################
     # background photon field
     if type(field) == type(''):
         try:
@@ -118,7 +77,7 @@ def pair_production(field,
     if field[:, 0].shape[0] > 7000:
         raise NotImplementedError(
             "field should contain no more than 7000 strings (rows)! (more strings will be implemented in future)")
-    photon_path = 'processes/c_codes/GammaGammaPairProduction/input/photon_path.txt'
+    photon_path = str(ggpp_in / 'photon_path.txt')
     np.savetxt(photon_path, field, fmt='%.6e')
     ###########################################################################
     # gamma-ray SED
@@ -139,12 +98,12 @@ def pair_production(field,
     if gamma[:, 0].shape[0] > 5000:
         raise NotImplementedError(
             "gamma should contain no more than 5000 strings (rows)! (more strings will be implemented in future)")
-    gamma_path = 'processes/c_codes/GammaGammaPairProduction/input/gamma_path.txt'
+    gamma_path = str(ggpp_in / 'gamma_path.txt')
     np.savetxt(gamma_path, gamma, fmt='%.6e')
+    output_path = str(ggpp_out / 'SED_gamma-gamma_pairs.txt')
     ###########################################################################
-    pair_ext.pair(photon_path, gamma_path)
-    pair = np.loadtxt(
-        'processes/c_codes/GammaGammaPairProduction/output/SED_gamma-gamma_pairs.txt')
+    ggpp_ext.pair(photon_path, gamma_path, output_path)
+    pair = np.loadtxt(output_path)
     pair_e = (pair[:, 0] * u.eV).to(gamma_energy_unit)
     pair_sed = pair[:, 1] * gamma_sed_unit
     return (pair_e, pair_sed)

@@ -6,8 +6,11 @@ bh_lib:
 ggir_lib:
 	cd src/extensions/GammaGammaInteractionRate && make lib
 
+ggpp_lib:
+	cd src/extensions/GammaGammaPairProduction && make lib
 
-install: bh_lib ggir_lib
+
+install: bh_lib ggir_lib ggpp_lib
 	python setup.py install
 
 clean:

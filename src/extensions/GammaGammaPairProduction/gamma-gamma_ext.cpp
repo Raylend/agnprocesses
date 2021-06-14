@@ -1,18 +1,19 @@
 #define PY_SSIZE_T_CLEAN
-#include "/home/raylend/anaconda3/include/python3.7m/Python.h"
+#include "Python.h"
 
-#include "gamma-gamma-core.h"
+#include "pairs.h"
 
 static PyObject *
 pair(PyObject *self, PyObject *args)
 {
     char *photon_file;
     char *gamma_file;
+    char *output_file;
     //
-    if (!PyArg_ParseTuple(args, "ss", &photon_file, &gamma_file))
+    if (!PyArg_ParseTuple(args, "sss", &photon_file, &gamma_file, &output_file))
         return NULL;
     //
-    pair_calculate(photon_file, gamma_file);
+    pair_calculate(photon_file, gamma_file, output_file);
     //
     Py_RETURN_NONE;
 }
@@ -22,9 +23,9 @@ static PyMethodDef methods[] = {
     {NULL, NULL, 0, NULL}  /* Sentinel */
 };
 
-static struct PyModuleDef pair_ext = {
+static struct PyModuleDef pair_ext_module = {
     PyModuleDef_HEAD_INIT,
-    "pair_ext",
+    "pair",
     "Implementation of Egor Podlesnyi's gamma-gamma pair production C codes. Input gamma-ray SED is considred as the SED of absorbed gamma-rays, so before using this code you should multiply your gamma-ray SED by (1 - exp(-tau)).",
     -1,
     methods
@@ -32,5 +33,5 @@ static struct PyModuleDef pair_ext = {
 
 PyMODINIT_FUNC PyInit_pair_ext(void)
 {
-    return PyModule_Create(&pair_ext);
+    return PyModule_Create(&pair_ext_module);
 }

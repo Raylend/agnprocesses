@@ -3,6 +3,8 @@
 #include <math.h>
 #include <string.h>
 
+#include "pairs.h"
+
 #define ELECTRON_REST_ENERGY 5.1100e+05 // eV
 #define THOMSON_CROSS_SECTION 6.6524e-25 // cm^2
 #define SPEED_OF_LIGHT 2.998e+10 // cm/s
@@ -16,9 +18,7 @@
 //
 //
 int SIZE_GAMMA_VHE;
-//
-//
-void pair_calculate_internal(char *photon_file, char *gamma_file);
+
 void read_photon_field(char *photon_file);
 void read_gamma_VHE(char *gamma_file);
 double r_function(double, double);
@@ -38,7 +38,7 @@ double aE;
 //
 //
 //
-void pair_calculate_internal(char *photon_file, char *gamma_file)
+void pair_calculate(char *photon_file, char *gamma_file, char *output_file)
 {
     FILE * fp;
     read_photon_field(photon_file);
@@ -100,10 +100,10 @@ void pair_calculate_internal(char *photon_file, char *gamma_file)
         }
     }
     // Printing results
-    fp = fopen("processes/c_codes/GammaGammaPairProduction/output/SED_gamma-gamma_pairs.txt", "w");
+    fp = fopen(output_file, "w");
     if (fp == NULL)
     {
-        printf("Couldn't create SED_gamma-gamma_pairs.txt!\n");
+        printf("Couldn't create output file!\n");
         exit(1);
     }
     for (int i = 0; i < SIZE_ENERGY; i++)
