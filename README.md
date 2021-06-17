@@ -6,21 +6,29 @@
 
 ```bash
 git clone https://github.com/Raylend/agnprocesses.git
+cd agnprocesses
 ```
 
-2. Install dependencies (**TBD: list dependencies in setup script**)
+2. (Recommended) Create virtual environment for the library
+
+```bash
+python3 -m venv agnenv
+source agnenv/bin/activate
+```
+
+3. Install dependencies (**TBD: list dependencies in setup script**)
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Install libraries and python package
+4. Compile shared libraries and install `agnprocesses` python package
 
 ```bash
 make install
 ```
 
-4. Compiled libraries are currently placed at `./bin/shared`. You must define LD_LIBRARY_PATH environment variable to use them. This may be done in `~/.bashrc` or in any other startup script (e.g. in venv activation script). (**TBD: install libs in /usr/local/lib or in user-specified location**)
+5. Compiled libraries are currently placed at `./bin/shared` and you must define LD_LIBRARY_PATH environment variable to use them. This may be done in `~/.bashrc` or in any other startup script (e.g. in `agnenv/bin/activate`). (**TBD: install libs in /usr/local/lib or in user-specified location**)
 
 ```bash
 echo "
