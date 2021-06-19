@@ -1,58 +1,56 @@
+# `agnprocesses` — AGN processes modelling toolkit
+
 ## Installation (Ubuntu based distribution)
-If you do not have git installed on your computer, you can download it using
 
-        sudo apt install git
-        
-1. Create a separate folder on your computer.
-2. Open the terminal **in this folder** and clone this repository using the following command:
+1. Clone this repo
 
-        git clone https://github.com/Raylend/agnprocesses.git
-      
-Then open the folder 'agnprocesses':
+```bash
+git clone https://github.com/Raylend/agnprocesses.git
+cd agnprocesses
+```
 
-        cd agnprocesses
-        
-and then clone this repository.
-        
-3. Define LD_LIBRARY_PATH OS environment variable. To do so:
+2. (Recommended) Create virtual environment for the library
 
-    1. Open ~/.bashrc:
-     
-            sudo nano ~/.bashrc
-            
-    2. In the end of the opened file add the following line:
-    
-            export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:'absolute_path_to_the_folder_agnprocesses/bin/shared'
-            
-    3. Save (Ctrl+O) and close the file (Ctrl+X).
-    4. Type:
-            
-            source ~/.bashrc
-            
-4. Using conda install astropy, numpy, matplotlib, scipy:
+```bash
+python3 -m venv agnenv
+source agnenv/bin/activate
+```
 
-        conda install astropy numpy matplotlib scipy
-        
-* (optional) For using pgamma.py, bh.py or gamma_gamma.py (this issue is to be fixed in future):
-    1. In the processes/c_codes/PhotoHadron/pgamma.cpp file in the 2nd line replace '/home/raylend/anaconda3' with a relevant path to your anaconda3. Do not remove '/include/python3.7m/Python.h'.
-    2. In the processes/c_codes/GammaGammaPairProduction/gamma-gamma.cpp file in the 2nd line replace '/home/raylend/anaconda3' with a relevant path to your anaconda3. Do not remove '/include/python3.7m/Python.h'.
-    3. In the processes/c_codes/BHPairProduction/bh.cpp file in the 2nd line replace '/home/raylend/anaconda3' with a relevant path to your anaconda3. Do not remove '/include/python3.7m/Python.h'.
-    
+3. Install dependencies (**TBD: list dependencies in setup script**)
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Compile shared libraries and install `agnprocesses` python package
+
+```bash
+make install
+```
+
+5. Compiled libraries are currently placed at `./bin/shared` and you must define LD_LIBRARY_PATH environment variable to use them. This may be done in `~/.bashrc` or in any other startup script (e.g. in `agnenv/bin/activate`). (**TBD: install libs in /usr/local/lib or in user-specified location**)
+
+```bash
+echo "
+export LD_LIBRARY_PATH=$(pwd)/bin/shared:\$LD_LIBRARY_PATH" >> your-activation-script
+```
+
+## Development
+
+Uninstall package and clean (almoast) all generated files:
+
+```bash
+make clean
+```
+
+Clean and install in one command:
+
+```bash
+make reinstall
+```
+
+
 ## Usage
-All operations are to be done in a separate .py file. See main.py file as an example of the SSC (synchrotron self Compton) model.
 
-To run your .py program in the terminal opened in the folder 'agnprocesses' use the following command (main is the name of the main.py file, you can rename it if you want):
+See `examples/main.py` as an example of the SSC (synchrotron self Compton) model (**other examples TBD**).
 
-        python main.py
-
-To make sure you use the last version of the agnprocesses package use
-        
-        git fetch
-        
-        git pull
-        
-to download last updates.
-* (optional) If you want to use hadronic part of agnprocesses, uncomment 'import processes.pgamma as pgamma', 'import processes.bh as bh', 'import processes.gamma_gamma as gamma_gamma' to use these modules. In such a case see (optional) instructions above.
-
-## Recommendations
-If you still do not have your favorite code editor I recommend to install [Atom](https://atom.io/). It can be installed using the software center in your Ubuntu distribution.
