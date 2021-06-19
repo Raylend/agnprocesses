@@ -52,5 +52,5 @@ make reinstall
 
 ## Usage
 
-See `examples/main.py` as an example of the SSC (synchrotron self Compton) model (**other examples TBD**).
+See `examples` for notebooks with example usage.
 
