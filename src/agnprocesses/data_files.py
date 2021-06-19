@@ -8,6 +8,7 @@ from typing import Tuple, Iterable
 CUR_DIR = Path(__file__).parent
 
 DATA_DIR = CUR_DIR / 'data'
+SCIENCE_2018_EXAMPLE_DATA = DATA_DIR / 'science-2017_gamma_flare_electromagnetic_component_v2.txt'
 
 
 def get_io_paths(name: str, subdir_names: Iterable[str] = ('input', 'output')) -> Tuple[Path, Path]:
