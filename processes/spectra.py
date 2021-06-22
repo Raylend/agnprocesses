@@ -7,6 +7,7 @@ from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
 from scipy import interpolate
+import torch
 
 
 def power_law(en,
@@ -55,7 +56,10 @@ def exponential_cutoff(en,
                        en_cutoff,
                        norm=1.0 * u.eV**(-1),
                        en_ref=1.0 * u.eV):
-    f = norm * (en / en_ref)**(-gamma) * np.exp(-en / en_cutoff)
+    try:
+        f = norm * (en / en_ref)**(-gamma) * np.exp(-en / en_cutoff)
+    except TypeError:
+        f = norm * (en / en_ref)**(-gamma) * torch.exp(-en / en_cutoff)
     try:
         f = f.to(norm.unit)
     except AttributeError:
@@ -226,7 +230,7 @@ def to_current_energy(e, e1, s1):
 
     e and e1 are not necessary energies.
 
-    e is the numpy array of interest.
+    e is the numpy array of interest (or astropy array-like Quantity)
 
     s1 is the function (intensity, SED and so on) to be interpolated.
 
