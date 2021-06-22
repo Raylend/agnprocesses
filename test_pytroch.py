@@ -8,6 +8,7 @@ import time
 from datetime import timedelta
 import matplotlib.pyplot as plt
 import torchinterp1d
+from functools import partial
 
 if __name__ == '__main__':
     ELECTRON_REST_ENERGY = const.m_e.to(u.eV, u.mass_energy()).value
@@ -19,10 +20,46 @@ if __name__ == '__main__':
         device = 'cuda'
     else:
         device = 'cpu'
-    ###########################################################################
+
+    ########################################################################
+    def torch_interpolation(x_new_tensor: torch.tensor,
+                            x_old_tensor: torch.tensor,
+                            y_old_tensor: torch.tensor):
+        f_support = torchinterp1d.Interp1d()
+        return(
+            f_support(x_old_tensor,
+                      y_old_tensor,
+                      x_new_tensor)
+        )
+
+    ########################################################################
+    def background_photon_density_interpolated(energy_new,
+                                               photon_field_file_path='',
+                                               device=device):
+        field = np.loadtxt(photon_field_file_path)
+        energy_old = torch.tensor(field[:, 0],
+                                  device=device)
+        density_old = torch.tensor(field[:, 1],
+                                   device=device)
+        return torch_interpolation(energy_new,
+                                   energy_old,
+                                   density_old)
+    ########################################################################
+    #
+    # def gamma_gamma_interaction_rate_interpolated(e_gamma_new_tensor,
+    #                                               e_gamma_old_tensor,
+    #                                               r_gamma_old_tensor):
+    #     f_support = torchinterp1d.Interp1d()
+    #     return(
+    #         f_support(e_gamma_old_tensor,
+    #                   r_gamma_old_tensor,
+    #                   e_gamma_new_tensor)
+    #     )
+    #
+    ########################################################################
 
     def generate_random_numbers(pdf,
-                                pars,
+                                pars=None,
                                 shape=(1,),
                                 xmin=torch.tensor(1.0,
                                                   device=device),
@@ -62,8 +99,9 @@ if __name__ == '__main__':
             while generate_size > 0:
                 if logarithmic:
                     x = 10.0**((torch.log10(xmax) -
-                                torch.log10(xmin)) * torch.rand((generate_size,),
-                                                                device=device) +
+                                torch.log10(xmin)) *
+                               torch.rand((generate_size,),
+                                          device=device) +
                                torch.log10(xmin))
                     p = (pdf(x, *pars, **kwargs) / norm * x)  # *
                     # c1 / c2)
@@ -81,6 +119,46 @@ if __name__ == '__main__':
                 x_final[start_point:start_point + generated] = x_new
 
         return (x_final, y_theory, z)
+
+    ########################################################################
+    # def exponential_distribution(x: torch.tensor,
+    #                              lambda_x: torch.tensor):
+    #     """
+    #     Returns pdf of the exponential distribution at x given that
+    #     for each value of an element of x there is a correpsonding value of
+    #     an element of lambda.
+    #     """
+    #     return (lambda_x * torch.exp(-lambda_x * x))
+    ########################################################################
+
+    def generate_random_gamma_path_length(e_gamma: torch.tensor,
+                                          e_gamma_node: torch.tensor,
+                                          r_gamma_node: torch.tensor,
+                                          device=device):
+        """
+        Generates tensor of random gamma-ray path lengths at e_gamma energy
+        points given that gamma-gamma interaction rate r_gamma_node
+        computed at e_gamma_node energy points.
+        """
+        r_gamma = torch_interpolation(
+            e_gamma,
+            e_gamma_node,
+            r_gamma_node
+        )
+        uniform_random = torch.rand(e_gamma.shape, device=device)
+        return (-torch.log(unifrom_random) / r_gamma)
+
+    ########################################################################
+    def generate_random_cosine(shape=(1,),
+                               cosmin=torch.tensor(-1.0,
+                                                   device=device),
+                               cosmax=torch.tensor(1.0,
+                                                   device=device),
+                               device=device):
+        return(
+            (cosmax - cosmin) * torch.rand(max(shape),
+                                           device=device) + cosmin
+        )
 
     ########################################################################
     def pair_production_differential_cross_section_y(y, s):
@@ -101,35 +179,87 @@ if __name__ == '__main__':
         return (t1 / (y * t2))
 
     #######################################################################
-    def get_random_y(shape=(1,),
-                     ymin=torch.tensor(1.0e-05,
-                                       device=device),
-                     ymax=torch.tensor(1.0,
-                                       device=device),
-                     logarithmic=True,
-                     device=device,
-                     **kwargs):
-        s = generate_random_s(shape=shape)
-        return (
-            generate_random_numbers(
+    def generate_random_y(s,
+                          shape=(1,),
+                          ymin=torch.tensor(1.0e-06,
+                                            device=device),
+                          ymax=torch.tensor(1.0,
+                                            device=device),
+                          logarithmic=True,
+                          device=device,
+                          **kwargs):
+        """
+        Generates random fraction of the squared total energy s for
+        electrons (positrons) produced in gamma-gamma collisions
+        in accordance with
+        pair_production_differential_cross_section_y(y, s).
+
+        Returns a torch.tensor of the requested shape.
+        """
+        y = torch.zeros(shape,
+                        device=device)
+        # bottle neck?
+        for i, value in enumerate(s):
+            y[i] = generate_random_numbers(
                 pair_production_differential_cross_section_y,
-                [s, ],
-                shape=shape,
+                [s[i], ],
+                shape=(1,),
                 xmin=ymin,
                 xmax=ymax,
                 logarithmic=logarithmic,
                 device=device,
                 **kwargs)
-        )
+        return y
 
     #######################################################################
-    def get_random_background_photon_energy(
-        number_of_samples,
-        interpolated_photon_density_function
+    def generate_random_background_photon_energy(
+            shape,
+            photon_field_file_path,
+            device=device
     ):
-        return None
+        field = np.loadtxt(photon_field_file_path)
+        energy_photon_min = field[0, 0]
+        energy_photon_max = field[-1, 0]
+        pdf = partial(background_photon_density_interpolated,
+                      photon_field_file_path=photon_field_file_path,
+                      device=device)
+        return (generate_random_numbers(
+            pdf,
+            pars=None,
+            shape=shape,
+            xmin=torch.tensor(energy_photon_min,
+                              device=device),
+            xmax=torch.tensor(energy_photon_max,
+                              device=device),
+            normalized=False,
+            logarithmic=True,
+            n_integration=10000,
+            device=device,
+            **kwargs
+        ))
 
     ########################################################################
+    def generate_random_s(energy,
+                          photon_field_file_path,
+                          random_cosine=True,
+                          device=device,
+                          **cosine_kwargs):
+        epsilon = generate_random_background_photon_energy(
+            energy.shape,
+            photon_field_file_path,
+            device=device
+        )
+        if random_cosine:
+            cosine = generate_random_cosine(energy.shape,
+                                            device=device,
+                                            **cosine_kwargs)
+        else:
+            cosine = -torch.ones(energy.shape,
+                                 device=device)
+        return (2.0 * epsilon * (1.0 - cosine) * energy)
+
+    ########################################################################
+
     def electron_positron_production(energy_tensor,
                                      region_size_cm):
         interaction_rate = 1
@@ -137,8 +267,8 @@ if __name__ == '__main__':
         if_sterile = (1.0 / interaction_rate_sampled > region_size)
         energy_escaped = energy_tensor[if_sterile]
         energy_tensor = energy_tensor[torch.logical_not(if_sterile)]
-        s = generate_s()
-        y_electron = generate_y()
+        s = generate_s(energy_tensor)
+        y_electron = generate_y(s)
         energy_electron = y_electron * s**0.5
         energy_positron = (1.0 - y_electron) * s**0.5
         return {
