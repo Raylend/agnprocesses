@@ -107,6 +107,12 @@ if __name__ == '__main__':
                 x_new = x[filt]
                 xmax = xmax[torch.logical_not(filt)]
                 xmin = xmin[torch.logical_not(filt)]
+                for i, param in enumerate(pars):
+                    try:
+                        iter(param)
+                        pars[i] = param[torch.logical_not(filt)]
+                    except TypeError:
+                        pass
                 generated = len(x_new)
                 start_point = len(x_final[x_final != float('Inf')])
                 generate_size = max(shape) - generated - start_point
@@ -233,7 +239,6 @@ if __name__ == '__main__':
 
     #######################################################################
     def generate_random_y(s,
-                          shape=(1,),
                           logarithmic=True,
                           device=device,
                           **kwargs):
@@ -245,20 +250,17 @@ if __name__ == '__main__':
 
         Returns a torch.tensor of the requested shape.
         """
-        y = torch.zeros(shape,
-                        device=device)
-        # bottle neck?
-        for i, value in enumerate(s):
-            y[i] = generate_random_numbers(
-                pair_production_differential_cross_section_y,
-                [s[i], ],
-                shape=(1,),
-                xmin=torch.tensor(ELECTRON_REST_ENERGY**2 / s,
-                                  device=device),
-                xmax=torch.tensor([1, ], device=device),
-                logarithmic=logarithmic,
-                device=device,
-                **kwargs)
+        shape = s.shape
+        y = generate_random_numbers(
+            pair_production_differential_cross_section_y,
+            [s, ],
+            shape=shape,
+            xmin=torch.tensor(ELECTRON_REST_ENERGY**2 / s,
+                              device=device),
+            xmax=torch.ones(shape, device=device),
+            logarithmic=logarithmic,
+            device=device,
+            normalized=True)
         return y
 
     #######################################################################
@@ -398,7 +400,7 @@ if __name__ == '__main__':
         (len(escaped_energy) / len(primary_energy)) * 100.0)
     )
     ########################################################################
-    # #4  Generate s
+    # #4 Generate s
     s = generate_random_s(interacted_energy,
                           field,
                           random_cosine=True,
@@ -413,27 +415,15 @@ if __name__ == '__main__':
     print("Min square root of s is {:.3e}".format((
         min(s)
     )**0.5))
-    # #5 Choose s >= 2 * ELECTRON_REST_ENERGY
+    # #5 Choose s >= (2 * ELECTRON_REST_ENERGY)**2
     filt_s = (s >= S_MIN)
     s = s[filt_s]
     print("Fraction of gamma rays generated pairs: {:.6f} %".format(
         len(s) / len(interacted_energy) * 100.0
     ))
-    # energy_skipped = interacted_energy[torch.logical_not(filt_s)]
-    # # Again
-    # s_second = generate_random_s(energy_skipped,
-    #                              field,
-    #                              random_cosine=True,
-    #                              device=device)
-    # filt_s2 = (s_second >= S_MIN)
-    # s_second = s_second[filt_s2]
-    # print("Fraction of gamma rays generated pairs second time: {:.6f} %".format(
-    #     len(s_second) / len(energy_skipped) * 100.0
-    # ))
-    # end_event.record()
-    # torch.cuda.synchronize()  # Wait for the events to be recorded!
-    # elapsed_time_ms = start_event.elapsed_time(end_event)
-    # print(elapsed_time_ms)
+    ########################################################################
+    # #6 Generate electron energy
+    electron_energy =
     ########################################################################
     # Run some things here
     # E_gamma = torch.tensor(E_gamma, device=device)
