@@ -1,0 +1,19 @@
+name: PR test
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  test_pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - run: pip install -r requirements.txt
+      - run: make install
+      - run: export LD_LIBRARY_PATH=$(pwd)/bin/shared:$LD_LIBRARY_PATH
+      - run: pytest tests -v
