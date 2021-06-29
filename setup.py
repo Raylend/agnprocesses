@@ -52,4 +52,5 @@ setup(
     include_package_data=True,
     packages=["agnprocesses"],
     ext_modules=[bh_ext, ggir_ext, ggpp_ext, pgamma_ext],
+    install_requires=['astropy', 'numpy', 'scipy'],
 )

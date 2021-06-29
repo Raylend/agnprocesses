@@ -1,3 +1,5 @@
+![tests](https://github.com/Raylend/agnprocesses/actions/workflows/pr.yml/badge.svg)
+
 # `agnprocesses` — AGN processes modelling toolkit
 
 ## Installation (Ubuntu based distribution)
@@ -19,7 +21,7 @@ source agnenv/bin/activate
 3. Install dependencies (**TBD: list dependencies in setup script**)
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.dev.txt
 ```
 
 4. Compile shared libraries and install `agnprocesses` python package
