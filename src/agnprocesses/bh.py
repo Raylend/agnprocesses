@@ -17,7 +17,7 @@ from numbers import Number
 
 import agnprocesses.ext.bh as bh_ext
 from .data_files import get_io_paths
-from .data_classes import SpatialSpectralPhotonDensity, SED
+from .data_classes import SpatialSpectralPhotonDensity, SEDPerTime
 
 
 inpath, outpath = get_io_paths('bh_ext_io')
@@ -39,7 +39,7 @@ def kelner_bh_calculate(
     proton_spectrum_gamma: float,
     proton_spectrum_E_cut: Optional[Quantity] = None,
     proton_spectrum_norm: Quantity = 1.0 / (u.eV),
-) -> SED:
+) -> SEDPerTime:
     """SED of electrons and positrons produced at interactions of relativistic protons with low energy photon
     background:
 
@@ -63,7 +63,7 @@ def kelner_bh_calculate(
         NotImplementedError: for background_photon_field with size > 100 (temporary restriction)
 
     Returns:
-        SED: resulting electron+positron spectral energy distribtion
+        SEDPerTime: resulting electron+positron spectral energy distribtion
     """
 
     if background_photon_field.size > 100:
@@ -100,6 +100,6 @@ def kelner_bh_calculate(
         proton_spectrum_E_cut.value,
     )
 
-    sed = SED.from_txt(output_path, E_unit=u.eV, q_unit=(u.eV * u.s**(-1)))
+    sed = SEDPerTime.from_txt(output_path, E_unit=u.eV, q_unit=(u.eV * u.s**(-1)))
     sed.q *= proton_spectrum_norm / (1.0 / u.eV)  # ??? applying initial normalization at last ???
     return sed

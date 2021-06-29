@@ -79,7 +79,21 @@ class EnergyDependentQuantity:
         q = data[:, 1] * q_unit
         return cls(E, q)
 
-    def to_numpy(self, E_unit: Optional[u.Unit], q_unit: Optional[u.Unit]) -> 'Nx2 NumpyArray':  # type: ignore
+    @classmethod
+    def from_numpy(
+        cls, table: 'Nx2 NumpyArray', E_unit: Optional[u.Unit] = None, q_unit: Optional[u.Unit] = None  # type: ignore
+    ) -> EnergyDependentQuantity:
+        E = table[:, 0]
+        if E_unit is not None:
+            E *= E_unit
+        q = table[:, 1]
+        if q_unit is not None:
+            q *= q_unit
+        return cls(E, q)
+
+    def to_numpy(
+        self, E_unit: Optional[u.Unit] = None, q_unit: Optional[u.Unit] = None
+    ) -> 'Nx2 NumpyArray':  # type: ignore
         E = self.E.to(E_unit or self.E.unit).value
         q = self.q.to(q_unit or self.q.unit).value
         return np.concatenate((E[..., np.newaxis], q[..., np.newaxis]), axis=1)
@@ -136,14 +150,16 @@ class EnergyDependentQuantity:
         )
 
 
-class SED(EnergyDependentQuantity):
-    """Spectral energy distribution (E^2 dN/dE)"""
+class SEDPerAreaTime(EnergyDependentQuantity):
+    """Spectral energy distribution (E^2 dN / dE dS dt)"""
 
     default_unit = u.eV * u.cm**(-2) * u.s**(-1)
 
-    @property
-    def sed(self) -> Quantity:
-        return self.q
+
+class SEDPerTime(EnergyDependentQuantity):
+    """Spectral energy distribution (E^2 dN / dE dt)"""
+
+    default_unit = u.eV * u.s**(-1)
 
 
 class SpatialSpectralPhotonDensity(EnergyDependentQuantity):

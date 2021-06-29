@@ -13,12 +13,7 @@ def validate_maybe_quantity(v: MaybeQuantity, unit: u.Unit) -> Quantity:
     if not isinstance(v, Quantity):
         return v * unit  # works both on numpy arrays and single floats/ints!
     else:
-        try:
-            v.to(unit)
-        except u.core.UnitConversionError:
-            raise ValueError(
-                f"Quantity is inconvertible to the unit ({unit})"
-            )
+        v.to(unit)  # checking convertability
         return v
 
 

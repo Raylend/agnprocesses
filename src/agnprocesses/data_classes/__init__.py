@@ -1,7 +1,10 @@
-from .energy_dependent_quantities import EnergyDependentQuantity, SED, SpatialSpectralPhotonDensity
+from .energy_dependent_quantities import (
+    EnergyDependentQuantity, SEDPerAreaTime, SEDPerTime, SpatialSpectralPhotonDensity
+)
 
 __all__ = [
     'EnergyDependentQuantity',
-    'SED',
+    'SEDPerAreaTime',
+    'SEDPerTime',
     'SpatialSpectralPhotonDensity',
 ]
