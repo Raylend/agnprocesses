@@ -1,3 +1,5 @@
+![tests](https://github.com/Raylend/agnprocesses/actions/workflows/pr.yml/badge.svg)
+
 # `agnprocesses` — AGN processes modelling toolkit
 
 ## Installation (Ubuntu based distribution)
