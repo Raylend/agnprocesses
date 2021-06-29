@@ -1,4 +1,4 @@
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 from pathlib import Path
 
 
@@ -48,9 +48,9 @@ setup(
     author="Egor Podlesniy",
     author_email="podlesnyi.ei14@physics.msu.ru",
     license="GPLv3",
-    package_dir={"": "src"},
     include_package_data=True,
-    packages=["agnprocesses"],
+    package_dir={"": "src"},
+    packages=["agnprocesses", "agnprocesses.data_classes"],
     ext_modules=[bh_ext, ggir_ext, ggpp_ext, pgamma_ext],
     install_requires=['astropy', 'numpy', 'scipy'],
 )
