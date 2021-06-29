@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: '3.8'
           architecture: 'x64'
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.test.txt
       - run: make install
       - run: export LD_LIBRARY_PATH=$(pwd)/bin/shared:$LD_LIBRARY_PATH
       - run: pytest tests -v

@@ -19,7 +19,7 @@ source agnenv/bin/activate
 3. Install dependencies (**TBD: list dependencies in setup script**)
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.dev.txt
 ```
 
 4. Compile shared libraries and install `agnprocesses` python package
