@@ -3,15 +3,15 @@ from astropy import constants as const
 import numpy as np
 from astropy.coordinates import get_sun
 from astropy.time import Time
-import pandas as pd
 
 
 # see https://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone.pdf
-MET_REFERENCE_DATE = pd.Timestamp('January 1, 2001, 0:0:0')
+MET_REFERENCE_DATE = np.datetime64('2001-01-01T00:00:00')
 
 
-def fermi_met_to_utc(met):
-    return (MET_REFERENCE_DATE + pd.Timedelta(met, unit='s')).to_numpy()
+def fermi_met_to_utc(met: float):
+    dt = np.timedelta64(met, 's')
+    return MET_REFERENCE_DATE + dt
 
 
 def get_sun_ra_fermi(t_fermi_sec):
