@@ -15,5 +15,4 @@ jobs:
           architecture: 'x64'
       - run: pip install -r requirements.test.txt
       - run: make install
-      - run: export LD_LIBRARY_PATH=$(pwd)/bin/shared:$LD_LIBRARY_PATH
-      - run: pytest tests -v
+      - run: export LD_LIBRARY_PATH=$(pwd)/bin/shared:$LD_LIBRARY_PATH && pytest tests -v
