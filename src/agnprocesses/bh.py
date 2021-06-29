@@ -11,124 +11,95 @@ from astropy import units as u
 from astropy import constants as const
 import numpy as np
 
+from astropy.units import Quantity
+from typing import Union, Optional
+from numbers import Number
+
 import agnprocesses.ext.bh as bh_ext
 from .data_files import get_io_paths
+from .data_classes import SpatialSpectralPhotonDensity, SED
 
 
 inpath, outpath = get_io_paths('bh_ext_io')
 
 
+def lorentz_to_energy(particle_mass) -> 'astopy Equivalence':  # type: ignore
+    return (
+        u.dimensionless_unscaled,  # lorentz factor
+        u.J,
+        lambda gamma: gamma * particle_mass * const.c**2,
+        lambda E: E / particle_mass * const.c**2, 
+    )
+
+
 def kelner_bh_calculate(
-    field,
-    energy_proton_min,
-    energy_proton_max,
-    p_p,
-    e_cut_p=-1,
-    C_p=1.0 / (u.eV),
-    background_photon_energy_unit=u.eV,
-    background_photon_density_unit=(u.eV * u.cm ** 3) ** (-1),
-):
+    E_proton_min: Union[Number, Quantity],
+    E_proton_max: Union[Number, Quantity],
+    background_photon_field: SpatialSpectralPhotonDensity,
+    proton_spectrum_gamma: float,
+    proton_spectrum_E_cut: Optional[Quantity] = None,
+    proton_spectrum_norm: Quantity = 1.0 / (u.eV),
+) -> SED:
+    """SED of electrons and positrons produced at interactions of relativistic protons with low energy photon
+    background:
+
+        p + γ → p + e− + e+
+
+    Implemented following Kelner, S. R., & Aharonian, F. A. (2008). Energy spectra of gamma rays, electrons,
+    and neutrinos produced at interactions of relativistic protons with low energy radiation.
+    Physical Review D, 78(3). https://doi.org/10.1103/physrevd.78.034013
+
+    Args:
+        E_proton_min: minimum proton energy, astropy.Quantity in energy units OR float, interpreted as Lorentz factor
+        E_proton_max: maximum proton energy, same types
+        background_photon_field (SpatialSpectralPhotonDensity): self-explainatory
+        proton_spectrum_gamma (float): power law proton spectrum's power
+        proton_spectrum_E_cut (Quantity, optional): energy of optional exponential cut in proton spectrum.
+                                                    Defaults to None (no cut).
+        proton_spectrum_norm (Quantity, optional): normalizing constant of proton spectrum (dN/dE).
+                                                   Defaults to 1.0/(u.eV).
+
+    Raises:
+        NotImplementedError: for background_photon_field with size > 100 (temporary restriction)
+
+    Returns:
+        SED: resulting electron+positron spectral energy distribtion
     """
-    energy_proton_min is the minimum proton energy
-    (must be an astropy Quantity of energy or float (in the latter case it will
-    be considered as Lorentz factor))
 
-    energy_proton_max is the maximum proton energy
-    (must be the same type as energy_proton_min)
-
-    e_cut_p is the cutoff proton energy. It must be an astropy Quantity or
-    float (in the latter case it will be considered as Lorentz factor).
-    If it is less than 0 (default), an ordinary power law spectrum will be used.
-
-    field is the string with the path to the target photon field .txt file
-    OR numpy array with 2 colums: the first column is the background photon
-    energy, the second columnn is the background photon density.
-    Units in the field table must correspond to the
-    background_photon_energy_unit parameter and the
-    background_photon_density_unit parameter.
-
-    field should contain no more than 100 strings (rows)!!!
-    (more strings will be implemented in future)
-
-    C_p is the normalization coefficient of the proton spectrum.
-
-    Returns a tuple with electron + positron energy in
-    eV and SED in eV * s**(-1) as array-like astropy Quantities.
-    """
-    try:
-        energy_coef = background_photon_energy_unit.to(u.eV) / (1.0 * u.eV)
-        dens_coef = background_photon_density_unit.to((u.eV * u.cm ** 3) ** (-1)) / (
-            u.eV * u.cm ** 3
-        ) ** (-1)
-    except AttributeError:
-        raise AttributeError(
-            "Make sure that background_photon_energy_unit is in energy units, "
-            + "background_photon_density_unit is in [energy * volume]**(-1) units."
-        )
-
-    if isinstance(field, str):
-        try:
-            field = np.loadtxt(field)
-            field[:, 0] = field[:, 0] * energy_coef
-            field[:, 1] = field[:, 1] * dens_coef
-        except:
-            raise ValueError(
-                "Cannot read 'field'! Make sure it is a numpy array \n"
-                + " with 2 columns or a string with the path to a .txt file with \n"
-                + " 2 columns (energy / density).\n"
-                + "Try to use an absolute path."
-            )
-    elif isinstance(field, np.ndarray):  # TODO: there may be a better way of checking this
-        field[:, 0] = field[:, 0] * energy_coef
-        field[:, 1] = field[:, 1] * dens_coef
-    else:
-        raise ValueError(
-            "Invalid value of 'field'! Make sure it is a numpy array \n"
-            + " with 2 columns or a string with the path to a .txt file with \n"
-            + " 2 columns (energy / density)."
-        )
-
-    if field[:, 0].shape[0] > 100:
-        raise NotImplementedError(
-            "field should contain no more than 100 strings (rows)! (more strings will be implemented in future)"
-        )
-
+    if background_photon_field.size > 100:
+        raise NotImplementedError("Background photon field grid is currently limited at 100 elements")
     photon_field_path = str((inpath / "field.txt").resolve())
+    np.savetxt(
+        photon_field_path,
+        # units are set as expected by extension!
+        background_photon_field.to_numpy(E_unit=u.eV, q_unit=(u.eV * u.cm ** 3)**(-1)),
+        fmt="%.6e"
+    )
+
+    def E_from_E_or_lorentz(EorL: Union[Number, Quantity]) -> Quantity:
+        if not isinstance(EorL, Quantity):
+            EorL = EorL * u.dimensionless_unscaled
+        return EorL.to(u.eV, equivalencies=[lorentz_to_energy])
+
+    E_proton_min = E_from_E_or_lorentz(E_proton_min)
+    E_proton_max = E_from_E_or_lorentz(E_proton_max)
+
+    if proton_spectrum_E_cut is None:
+        proton_spectrum_E_cut = -1 * u.dimensionless_unscaled  # as expected by extension
+    else:
+        proton_spectrum_E_cut = E_from_E_or_lorentz(proton_spectrum_E_cut)
+
     output_path = str((outpath / "BH_SED.txt").resolve())
-
-    np.savetxt(photon_field_path, field, fmt="%.6e")
-
-    try:
-        energy_proton_min = energy_proton_min.to(u.eV)
-        energy_proton_max = energy_proton_max.to(u.eV)
-    except AttributeError:
-        try:
-            energy_proton_min = (energy_proton_min * const.m_p * const.c ** 2).to(u.eV)
-            energy_proton_max = (energy_proton_max * const.m_p * const.c ** 2).to(u.eV)
-        except:
-            raise ValueError(
-                "Problems with energy_proton_min and energy_proton_max!\n"
-                + "Make sure they are astropy Quantities or float!"
-            )
-    try:
-        e_cut_value = e_cut_p.value
-    except AttributeError:
-        if e_cut_p < 0:
-            e_cut_p = e_cut_p * u.dimensionless_unscaled
-        else:
-            e_cut_p = (e_cut_p * const.m_p * const.c ** 2).to(u.eV)
 
     bh_ext.bh(
         photon_field_path,
         output_path,
-        energy_proton_min.value,
-        energy_proton_max.value,
-        p_p,
-        e_cut_p.value,
+        E_proton_min.value,
+        E_proton_max.value,
+        proton_spectrum_gamma,
+        proton_spectrum_E_cut.value,
     )
 
-    pair = np.loadtxt(output_path)
-    pair_e = pair[:, 0] * u.eV
-    pair_sed = pair[:, 1] * (u.eV * u.s ** (-1))
-    pair_sed = pair_sed * C_p / (1.0 / u.eV)
-    return (pair_e, pair_sed)
+    sed = SED.from_txt(output_path, E_unit=u.eV, q_unit=(u.eV * u.s**(-1)))
+    sed.q *= proton_spectrum_norm / (1.0 / u.eV)  # ??? applying initial normalization at last ???
+    return sed

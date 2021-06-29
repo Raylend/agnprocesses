@@ -3,11 +3,10 @@ from astropy.units import Quantity
 
 from typing import Union
 from numbers import Number
-from nptyping import NDArray
 
 
 # number or numpy array, convertible to quantity
-MaybeQuantity = Union[Quantity, Number, NDArray]
+MaybeQuantity = Union[Quantity, Number, 'NumpyArray']  # type: ignore
 
 
 def validate_maybe_quantity(v: MaybeQuantity, unit: u.Unit) -> Quantity:

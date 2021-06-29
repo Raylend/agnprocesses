@@ -39,18 +39,25 @@ class EnergyDependentQuantity:
             )
         self.E = validate_maybe_quantity(E, u.eV)
 
-        if E.ndim != 1 or q.ndim != 1:
+        # boring validations of size, shape etc
+        if self.E.ndim != 1 or self.q.ndim != 1:
             raise ValueError(
                 f"Only 1-D Energy Dependent Quantities are supported, but {self.E.ndim = }, {self.q.ndim = }"
             )
-        if E.size != q.size:
+        if self.E.size != self.q.size:
             raise ValueError(
                 f"Energy and quantity must be astropy.Quantity of the same size, but {self.E.size = }, {self.q.size = }!"
             )
+        if np.unique(self.E).size < self.E.size:
+            raise ValueError(f"Energy array cannot contain duplicates")
 
     @property
     def unit(self) -> u.Unit:
         return self.q.unit
+
+    @property
+    def size(self) -> int:
+        return self.E.size
 
     @classmethod
     def _validate_with_default_unit(cls, v: MaybeQuantity) -> Quantity:
@@ -65,7 +72,19 @@ class EnergyDependentQuantity:
         else:
             return validate_maybe_quantity(v, cls.default_unit)
 
-    # standard law constructors
+    @classmethod
+    def from_txt(cls, filename: str, E_unit: Optional[u.Unit], q_unit: Optional[u.Unit]) -> EnergyDependentQuantity:
+        data = np.loadtxt(filename)
+        E = data[:, 0] * E_unit
+        q = data[:, 1] * q_unit
+        return cls(E, q)
+
+    def to_numpy(self, E_unit: Optional[u.Unit], q_unit: Optional[u.Unit]) -> 'Nx2 NumpyArray':  # type: ignore
+        E = self.E.to(E_unit or self.E.unit).value
+        q = self.q.to(q_unit or self.q.unit).value
+        return np.concatenate((E[..., np.newaxis], q[..., np.newaxis]), axis=1)
+
+    # constructors for standard laws
     # TODO: make separate class for analytical functions
 
     @classmethod
@@ -127,7 +146,7 @@ class SED(EnergyDependentQuantity):
         return self.q
 
 
-class SpatialSpectralDensity(EnergyDependentQuantity):
+class SpatialSpectralPhotonDensity(EnergyDependentQuantity):
     """Quantity of photons per volume per energy unit"""
 
     default_unit = 1.0 / (u.eV * u.cm**3)
