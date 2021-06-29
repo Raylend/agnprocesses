@@ -5,6 +5,7 @@ import numpy as np
 import astropy.units as u
 
 from agnprocesses.data_classes.energy_dependent_quantities import EnergyDependentQuantity, SED
+from agnprocesses.data_classes.utils import validate_maybe_quantity, E_ratio_as_float
 
 
 @pytest.mark.parametrize(
@@ -86,3 +87,34 @@ def test_SED_init(E_in, q_in, E, q):
     for expected, inclass in zip([E, q], [sed.E, sed.q]):
         assert expected.unit == inclass.unit
         assert np.all(expected == inclass)
+
+
+@pytest.mark.parametrize(
+    'mq, unit, output',
+    [
+        param(1, u.eV, 1 * u.eV),
+        param(1 * u.J, u.eV, 1 * u.J),
+        param(1 * u.m, u.eV, None),
+        param(np.array([1, 2, 3]) * u.m, u.km, np.array([1, 2, 3]) * u.m),
+        param(np.array([1, 2, 3]), u.Hz, np.array([1, 2, 3]) * u.Hz),
+        param(np.array([1, 2, 3]) * u.s, u.m, None),
+    ]
+)
+def test_maybe_quantity_validation(mq, unit, output):
+    if output is not None:
+        assert np.all(validate_maybe_quantity(mq, unit) == output)
+    else:
+        with pytest.raises(ValueError):
+            validate_maybe_quantity(mq, unit)
+
+
+@pytest.mark.parametrize(
+    'E_num, E_den, output',
+    [
+        param(1 * u.eV, 1 * u.eV, 1),
+        param(1 * u.GeV, 1 * u.eV, 10**9),
+        param(1 * u.keV, 5 * u.PeV, 0.2 * 10**(-12)),
+    ]
+)
+def test_E_ratio_as_float(E_num, E_den, output):
+    assert E_ratio_as_float(E_num, E_den) == output

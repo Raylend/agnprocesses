@@ -8,41 +8,20 @@ from astropy.units import Quantity
 from astropy import constants as const
 
 from typing import ClassVar, Optional, Union
-from numbers import Number
-from nptyping import NDArray
+
+from .utils import MaybeQuantity, validate_maybe_quantity, E_ratio_as_float
 
 
 # for semantic typing
 Energy = Quantity
 Frequency = Quantity
 Temperature = Quantity
-MaybeQuantity = Union[Quantity, Number, NDArray]
-
-
-def E_ratio_to_float(E_num: MaybeQuantity, E_den: MaybeQuantity) -> float:
-    x = E_num / E_den
-    if isinstance(x, Quantity):
-        x = x.to(u.dimensionless_unscaled).value
-    return x
-
-
-def validate_maybe_quantity(v: MaybeQuantity, unit: u.Unit) -> Quantity:
-    if not isinstance(v, Quantity):
-        return v * unit  # works both on numpy arrays and single floats/ints
-    else:
-        try:
-            v.to(unit)
-        except u.core.UnitConversionError:
-            raise ValueError(
-                f"Quantity is inconvertible to the unit ({unit})"
-            )
-        return v
 
 
 class EnergyDependentQuantity:
     """
-    Base class for all energy-dependent quantities. Subclasses should specify default_unit class
-    attribute so that it can be checked on intialization.
+    Base class for all energy-dependent quantities, i.e. table functions of energy.
+    Subclasses should specify default_unit class attribute so that it can be checked on intialization.
     """
 
     # to be redefined by subclasses
@@ -50,7 +29,7 @@ class EnergyDependentQuantity:
 
     def __init__(self, E: MaybeQuantity, q: MaybeQuantity) -> EnergyDependentQuantity:
         if self.__class__.default_unit is not None:
-            self.q = self.__class__._validate_maybe_quantity(q)
+            self.q = self.__class__._validate_with_default_unit(q)
         elif isinstance(q, Quantity):
             self.q = q
         else:
@@ -74,13 +53,17 @@ class EnergyDependentQuantity:
         return self.q.unit
 
     @classmethod
-    def _validate_maybe_quantity(cls, v: MaybeQuantity) -> Quantity:
+    def _validate_with_default_unit(cls, v: MaybeQuantity) -> Quantity:
         if cls.default_unit is None:
-            raise TypeError(
-                "Cannot infer units in class with no default_unit attribute, "
-                + "specify all units manually or use more specific subclass"
-            )
-        return validate_maybe_quantity(v, cls.default_unit)
+            if isinstance(v, Quantity):
+                return v
+            else:
+                raise TypeError(
+                    "Cannot infer units in class with no default_unit attribute, "
+                    + "specify all units manually or use more specific subclass"
+                )
+        else:
+            return validate_maybe_quantity(v, cls.default_unit)
 
     # standard law constructors
     # TODO: make separate class for analytical functions
@@ -89,7 +72,7 @@ class EnergyDependentQuantity:
     def power_law(
         cls, E: Energy, gamma: float, norm: MaybeQuantity = 1.0, E_ref: Energy = 1.0 * u.eV
     ) -> EnergyDependentQuantity:
-        return cls(E, cls._validate_maybe_quantity(norm) * (E / E_ref) ** (-gamma))
+        return cls(E, cls._validate_with_default_unit(norm) * (E / E_ref) ** (-gamma))
 
     @classmethod
     def broken_power_law(
@@ -100,7 +83,7 @@ class EnergyDependentQuantity:
         E_break: Energy,
         norm: Quantity,
     ):
-        q = np.ones_like(E) * cls._validate_maybe_quantity(norm)
+        q = np.ones_like(E) * cls._validate_with_default_unit(norm)
         q[E <= E_break] *= (E[E <= E_break] / E_break) ** (-gamma_1)
         q[E > E_break] *= (E[E <= E_break] / E_break) ** (-gamma_2)
         return cls(E, q)
@@ -114,8 +97,8 @@ class EnergyDependentQuantity:
         norm: MaybeQuantity = 1.0,
         E_ref: Energy = 1.0 * u.eV,
     ):
-        x = E_ratio_to_float(E, E_ref)
-        return cls(E, cls._validate_maybe_quantity(norm) * x ** (-(alpha + beta * np.log10(x))))
+        x = E_ratio_as_float(E, E_ref)
+        return cls(E, cls._validate_with_default_unit(norm) * x ** (-(alpha + beta * np.log10(x))))
 
     @classmethod
     def exponential_cutoff(
@@ -128,13 +111,15 @@ class EnergyDependentQuantity:
     ):
         return cls(
             E,
-            cls._validate_maybe_quantity(norm)
-            * E_ratio_to_float(E, E_ref) ** (-gamma)
-            * np.exp(-E_ratio_to_float(E, E_cutoff)),
+            cls._validate_with_default_unit(norm)
+            * E_ratio_as_float(E, E_ref) ** (-gamma)
+            * np.exp(-E_ratio_as_float(E, E_cutoff)),
         )
 
 
 class SED(EnergyDependentQuantity):
+    """Spectral energy distribution (E^2 dN/dE)"""
+
     default_unit = u.eV * u.cm**(-2) * u.s**(-1)
 
     @property
@@ -142,12 +127,13 @@ class SED(EnergyDependentQuantity):
         return self.q
 
 
-# TODO: name for this class!
-class PhotonsPerEnergyPerVolume(EnergyDependentQuantity):
+class SpatialSpectralDensity(EnergyDependentQuantity):
+    """Quantity of photons per volume per energy unit"""
+
     default_unit = 1.0 / (u.eV * u.cm**3)
 
     @classmethod
-    def greybody_spectrum(
+    def greybody(
         cls, E: Union[Energy, Frequency], temperature: Union[Energy, Temperature], dilution: float = 1.0
     ):
         KT = temperature.to(u.J, equivalencies=u.temperature_energy())
