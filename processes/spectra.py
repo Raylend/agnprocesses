@@ -15,10 +15,10 @@ def power_law(en,
               norm=1.0 * u.eV**(-1),
               en_ref=1.0 * u.eV):
     f = (norm * (en / en_ref)**(-gamma))
-    try:
-        f = f.to(norm.unit)
-    except AttributeError:
-        pass
+    # try:
+    #     f = f.to(norm.unit)
+    # except AttributeError:
+    #     pass
     return f
 
 
@@ -40,13 +40,21 @@ def log_parabola(en, alpha, beta, en_ref=1.0 * u.eV, norm=1.0 * u.eV**(-1)):
         x = (en / en_ref).to(u.dimensionless_unscaled)
     except AttributeError:
         x = (en / en_ref)
-    f = norm * (en / en_ref)**(-
-                               (alpha + beta * np.log(x)
-                                )
-                               )
+    except TypeError:
+        x = (en / en_ref)
+    try:
+        f = norm * (en / en_ref)**(-
+                                   (alpha + beta * np.log(x))
+                                   )
+    except TypeError:
+        f = norm * (en / en_ref)**(-
+                                   (alpha + beta * torch.log(x))
+                                   )
     try:
         f = f.to(norm.unit)
     except AttributeError:
+        pass
+    except TypeError:
         pass
     return f
 
