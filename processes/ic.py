@@ -1,11 +1,14 @@
 """
-This program computes inverse Compton (IC) emission of reletivistic electron_spectrum following Jones (1968) Phys. Rev. 167, 5
+This program computes inverse Compton (IC) emission of relativistic electron_spectrum following Jones (1968) Phys. Rev. 167, 5.
+Inverse Compton interaction rate C extension was added based on paper
+M. Kachelrieß et al. // Computer Physics Communications 183 (2012) 1036–1043
 """
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
 import matplotlib.pyplot as plt
+import subprocess  # to run prompt scripts from python
 try:
     import processes.spectra as spec
 except:
@@ -441,19 +444,140 @@ def inverse_compton_spec(
     return f
 
 
+###########################################################################
+def IC_interaction_rate_install(dev_mode=True):
+    try:
+        with open('processes/logs/IC_interaction_rate-log', mode='r') as f:
+            IC_interaction_rate_install_flag = int(f.read(1))
+            f.close()
+    except:
+        IC_interaction_rate_install_flag = 0
+    if IC_interaction_rate_install_flag == 0 or dev_mode == True:
+        # %% 1. creating .o files
+        print("1. Creating .o files...")
+        ####################################################################
+        cmd = "g++ -c -fPIC processes/c_codes/InverseComptonInteractionRate/IC_interaction_rate_core.cpp -o bin/shared/IC_interaction_rate-core.o"
+        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
+        ####################################################################
+        cmd = "g++ -c -fPIC processes/c_codes/InverseComptonInteractionRate/IC_interaction_rate.cpp -o bin/shared/IC_interaction_rate.o"
+        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
+        print('Done!')
+        # %% 2. creating a library file .so
+        print("2. Creating an .so library file...")
+        cmd = 'g++ -shared bin/shared/IC_interaction_rate-core.o bin/shared/IC_interaction_rate.o -o bin/shared/libInverseComptonInteractionRate.so'
+        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
+        print('Done!')
+        # %% 3. installing setup.py, i.e. installing the module
+        print("3. Installing the module...")
+        cmd = 'python setup-IC_interaction_rate.py install'
+        cmdout = subprocess.check_output(cmd, shell=True)[:-1]
+        print(str(cmdout))
+        print('Done!')
+        # %% 4. Completed
+        print("4.Installation of Inverse Compton interaction rate library completed.")
+        with open('processes/logs/IC_interaction_rate-log', mode='w') as f:
+            f.write('1')
+            f.close()
+    else:
+        pass
+    return None
+
+
+def IC_interaction_rate(
+        field,
+        e_min,
+        e_max,
+        e_thr,
+        background_photon_energy_unit=u.eV,
+        background_photon_density_unit=(u.eV * u.cm**3)**(-1)
+):
+    """
+    field is the string with the path to the target photon field .txt file
+    OR numpy array with 2 columns: the first column is the background photon
+    energy, the second columnn is the background photon density.
+    Units in the field table must correspond to the
+    background_photon_energy_unit parameter and the
+    background_photon_density_unit parameter.
+    field should contain no more than 100 strings (rows)!!!
+    (more strings will be implemented in future)
+
+    e_min, e_max, e_thr are minimum, maximum and threshold electron energy.
+    They must be in astropy energy units.
+
+    Returns an tuple of 2 numpy columns: energy and interaction rate
+    """
+    try:
+        e_min = e_min.to(u.eV)
+    except:
+        raise ValueError("e_min must be an energy astropy Quantity!")
+    try:
+        e_max = e_max.to(u.eV)
+    except:
+        raise ValueError("e_max must be an energy astropy Quantity!")
+    try:
+        e_thr = e_thr.to(u.eV)
+    except:
+        raise ValueError("e_thr must be an energy astropy Quantity!")
+    if e_min < e_thr:
+        raise ValueError("e_min cannot be less than e_thr!")
+    if e_min > e_max:
+        raise ValueError("e_min cannot be greater than e_max!")
+    ########################################################################
+    try:
+        energy_coef = background_photon_energy_unit.to(u.eV) / (1.0 * u.eV)
+        dens_coef = background_photon_density_unit.to(
+            (u.eV * u.cm**3)**(-1)
+        ) / (u.eV * u.cm**3)**(-1)
+    except AttributeError:
+        raise AttributeError(
+            "Make sure that background_photon_energy_unit is in energy units, background_photon_density_unit is in [energy * volume]**(-1) units.")
+    ########################################################################
+    # background photon field
+    if type(field) == type(''):
+        try:
+            field = np.loadtxt(field)
+            field[:, 0] = field[:, 0] * energy_coef
+            field[:, 1] = field[:, 1] * dens_coef
+        except:
+            raise ValueError(
+                "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).\nTry to use an absolute path.")
+    elif type(field) == type(np.array(([2, 1], [5, 6]))):
+        field[:, 0] = field[:, 0] * energy_coef
+        field[:, 1] = field[:, 1] * dens_coef
+    else:
+        raise ValueError(
+            "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
+    if field[:, 0].shape[0] > 7000:
+        raise NotImplementedError(
+            "field should contain no more than 7000 strings (rows)! (more strings will be implemented in future)")
+    photon_path = 'processes/c_codes/InverseComptonInteractionRate/input/photon_field.txt'
+    np.savetxt(photon_path, field, fmt='%.6e')
+    ########################################################################
+    IC_interaction_rate_install()
+    import IC_interaction_rate_ext
+    ########################################################################
+    IC_interaction_rate_ext.IC_rate(
+        photon_path, e_min.value, e_max.value, e_thr.value)
+    inter = np.loadtxt(
+        'processes/c_codes/InverseComptonInteractionRate/output/IC_interaction_rate.txt')
+    inter_e = inter[:, 0] * u.eV
+    inter_rate = inter[:, 1] * u.cm**(-1)
+    return (inter_e, inter_rate)
+
+
 if __name__ == '__main__':
     spec.test()
-    eps = np.logspace(-10, -2, 1000) * u.eV
-    eps = eps.reshape(eps.shape[0], 1)
-    T = 2.7 * u.K
-    dens = spec.greybody_spectrum(eps,
-                                  T,
-                                  dilution=1.0)
-    field = np.concatenate((eps.value, dens.value), axis=1)
-    np.savetxt(
-        'processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt',
-        field,
-        fmt='%1.6e')
+    # eps = np.logspace(-10, -2, 1000) * u.eV
+    # eps = eps.reshape(eps.shape[0], 1)
+    # T = 2.7 * u.K
+    # dens = spec.greybody_spectrum(eps,
+    #                               T,
+    #                               dilution=1.0)
+    # field = np.concatenate((eps.value, dens.value), axis=1)
+    # np.savetxt(
+    #     'processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt',
+    #     field,
+    #     fmt='%1.6e')
     ###########################################################################
     ############################################################################
     # fig = plt.figure(figsize=(8, 6))
