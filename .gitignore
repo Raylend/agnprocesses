@@ -17,4 +17,11 @@ processes/c_codes/GammaGammaPairProduction/input/*
 processes/c_codes/GammaGammaPairProduction/output/*
 processes/c_codes/GammaGammaInteractionRate/input/*
 processes/c_codes/GammaGammaInteractionRate/output/*
+processes/c_codes/InverseComptonInteractionRate/input/*
+processes/c_codes/InverseComptonInteractionRate/output/*
 *.npy
+data/Timur_cascades/Archive/*
+data/Aharonian08a_pair_production_cross_check
+data/greybody_spectrum_recheck
+data/PKS1510-089/0*
+data/PKS1510-089/gamma-gamma_interaction_rate

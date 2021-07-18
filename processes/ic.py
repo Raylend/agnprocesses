@@ -192,7 +192,11 @@ def inverse_compton_spec(
     norm is the normalization coefficient of charged particles
 
     spec_law must be 'power_law', 'broken_power_law',
-    'exponential_cutoff' or 'monoenergetic'
+    'exponential_cutoff', 'monoenergetic' or 'user'
+
+    'user' mode is for the electron spectrum defined by user created table
+    with, e.g. spec.create_2column_table(electron_energy, electron_spectrum).
+    In 'user' mode user_en_unit and user_spec_unit must be defined as well.
 
     gamma1 is the spectral index for the 'power_law' or the first spectral index
     for the 'broken_power_law' or the spectral index for the 'exponential_cutoff'
@@ -213,12 +217,15 @@ def inverse_compton_spec(
     nd.arrays (in the latter case they will be considered as Lorentz factors)
 
     field is the string with the path to the photon field .txt file OR numpy
-    array with 2 colums: the first column is the background photon energy, the
+    array with 2 colums:
+    the first column is the background photon energy, the
     second columnn is the background photon density. Units in the table must
     correspond to the background_photon_energy_unit parameter and the
     background_photon_density_unit parameter.
+
+    Returns IC-upscattered gamma-ray spectrum.
     """
-    ############################################################################
+    #########################################################################
     valid_spec_laws = ['power_law', 'broken_power_law',
                        'exponential_cutoff', 'monoenergetic',
                        'user']
@@ -226,7 +233,7 @@ def inverse_compton_spec(
         raise ValueError("Invalid spec_law. It must be one of {}"
                          .format(valid_spec_laws))
     f = None
-    ############################################################################
+    #########################################################################
     if spec_law == 'monoenergetic':
         par_list = [norm, en_mono]
         if all(el is not None for el in par_list):
@@ -241,7 +248,7 @@ def inverse_compton_spec(
             raise ValueError(
                 "en_mono should be an astropy Quantity, e.g. 5*u.GeV"
             )
-    ############################################################################
+    #########################################################################
     elif spec_law == 'broken_power_law':
         par_list = [gamma1, gamma2, en_break, en_min, en_max, norm]
         if all(el is not None for el in par_list):
@@ -287,7 +294,7 @@ def inverse_compton_spec(
                 "Make sure you defined all of gamma1, gamma2,\
              en_break, en_min, en_max, norm correctly"
             )
-    ###########################################################################
+    #########################################################################
     elif spec_law == 'power_law':
         par_list = [gamma1, en_ref, en_min, en_max, norm]
         if all(el is not None for el in par_list):
@@ -332,7 +339,7 @@ def inverse_compton_spec(
             raise ValueError(
                 "Make sure you defined all of gamma, en_ref, en_min, en_max, norm correctly"
             )
-    ###########################################################################
+    #########################################################################
     elif spec_law == 'exponential_cutoff':
         par_list = [gamma1, en_cutoff, en_min, en_max, norm, en_ref]
         if all(el is not None for el in par_list):
@@ -377,7 +384,7 @@ def inverse_compton_spec(
                 "Make sure you defined all of gamma1, en_cutoff, en_min, \
                 en_max, norm, en_ref correctly"
             )
-    ###########################################################################
+    #########################################################################
     elif spec_law == 'user':
         par_list = [electron_table, user_en_unit, user_spec_unit]
         if all(el is not None for el in par_list):
@@ -436,7 +443,7 @@ def inverse_compton_spec(
             raise ValueError(
                 "Make sure you defined all of electron_table, user_en_unit, user_spec_unit correctly"
             )
-    ###########################################################################
+    #########################################################################
     else:
         raise ValueError(
             f"Unknown charged particle spectrum type. The valid ones are: {valid_spec_laws}")
