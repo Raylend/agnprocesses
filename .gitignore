@@ -25,3 +25,4 @@ data/Aharonian08a_pair_production_cross_check
 data/greybody_spectrum_recheck
 data/PKS1510-089/0*
 data/PKS1510-089/gamma-gamma_interaction_rate
+data/torch/*

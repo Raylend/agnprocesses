@@ -19,15 +19,16 @@ import os
 ELECTRON_REST_ENERGY = const.m_e.to(u.eV, u.mass_energy()).value
 S_MIN = (2.0 * ELECTRON_REST_ENERGY)**2
 print('Hey!')
+device = 'cuda'
 # if False:
-if torch.cuda.is_available():
-    print("If cuda is available: ", torch.cuda.is_available())
-    device = 'cuda'
-    print("Using 'cuda'!!!")
-    print(torch.cuda.get_device_name())
-else:
-    device = 'cpu'
-    print("Using CPU!!!")
+# if torch.cuda.is_available():
+#     print("If cuda is available: ", torch.cuda.is_available())
+#     device = 'cuda'
+#     print("Using 'cuda'!!!")
+#     print(torch.cuda.get_device_name())
+# else:
+#     device = 'cpu'
+#     print("Using CPU!!!")
 ########################################################################
 # #0 Precalculate gamma-gamma interaction rate
 # r_blr = ((0.036 * u.pc).to(u.cm)).value  # BLR radius in cm
@@ -48,20 +49,24 @@ else:
 #     background_photon_density_unit=(u.eV * u.cm**3)**(-1)
 # )
 # energy_gamma_node = torch.tensor(energy_gamma_node.value,
-#                                  device=device)
+#                                  device=device, dtype=torch.float64)
 # r_gamma_gamma_node = torch.tensor(r_gamma_gamma_node.value,
-#                                   device=device)
+#                                   device=device, dtype=torch.float64)
 ########################################################################
+
+f_support_interpolation = torchinterp1d.Interp1d()
 
 
 def torch_interpolation(x_new_tensor: torch.tensor,
                         x_old_tensor: torch.tensor,
                         y_old_tensor: torch.tensor):
-    f_support = torchinterp1d.Interp1d()
+
     return(
-        torch.squeeze(f_support(x_old_tensor,
-                                y_old_tensor,
-                                x_new_tensor))
+        torch.squeeze(10.0**f_support_interpolation(
+            torch.log10(x_old_tensor),
+            torch.log10(y_old_tensor),
+            torch.log10(x_new_tensor))
+        )
     )
 
 ########################################################################
@@ -69,12 +74,12 @@ def torch_interpolation(x_new_tensor: torch.tensor,
 
 def background_photon_density_interpolated(energy_new,
                                            photon_field_file_path='',
-                                           device=device):
+                                           device=device, dtype=torch.float64):
     field = np.loadtxt(photon_field_file_path)
     energy_old = torch.tensor(field[:, 0],
-                              device=device)
+                              device=device, dtype=torch.float64)
     density_old = torch.tensor(field[:, 1],
-                               device=device)
+                               device=device, dtype=torch.float64)
     return torch_interpolation(energy_new,
                                energy_old,
                                density_old)
@@ -86,9 +91,11 @@ def generate_random_numbers(pdf,
                             pars=[],
                             shape=(1,),
                             xmin=torch.tensor(1.0,
-                                              device=device),
+                                              device=device,
+                                              dtype=torch.float64),
                             xmax=torch.tensor(10.0,
-                                              device=device),
+                                              device=device,
+                                              dtype=torch.float64),
                             normalized=False,  # deprecated
                             logarithmic=True,
                             n_integration=300,
@@ -96,8 +103,7 @@ def generate_random_numbers(pdf,
                             verbose=False,  # deprecated
                             **kwargs):
     x_final = float('Inf') * torch.ones(shape,
-                                        device=device)
-    generate_size = max(shape)
+                                        device=device, dtype=torch.float64)
     if logarithmic:
         c = []
         for i, param in enumerate(pars):
@@ -110,7 +116,7 @@ def generate_random_numbers(pdf,
                     z = torch.logspace(torch.log10(xmin[element_number]),
                                        torch.log10(xmax[element_number]),
                                        n_integration,
-                                       device=device)
+                                       device=device, dtype=torch.float64)
                     c.append(
                         torch.max(z * pdf(z,
                                           *[param_value, *pars[1:]],
@@ -124,14 +130,14 @@ def generate_random_numbers(pdf,
                 z = torch.logspace(torch.log10(xmin[element_number]),
                                    torch.log10(xmax[element_number]),
                                    n_integration,
-                                   device=device)
+                                   device=device, dtype=torch.float64)
                 c.append(
                     torch.max(z * pdf(z,
                                       *pars,
                                       **kwargs))
                 )
-        c = (torch.tensor(c, device=device)
-             * torch.ones(xmin.shape, device=device))
+        c = (torch.tensor(c, device=device, dtype=torch.float64)
+             * torch.ones(xmin.shape, device=device, dtype=torch.float64))
     else:  # not logarithmic
         c = []
         for i, param in enumerate(pars):
@@ -144,7 +150,7 @@ def generate_random_numbers(pdf,
                     z = torch.linspace(xmin[element_number],
                                        xmax[element_number],
                                        n_integration,
-                                       device=device)
+                                       device=device, dtype=torch.float64)
                     c.append(
                         torch.max(pdf(z,
                                       *[param_value, *pars[1:]],
@@ -158,42 +164,49 @@ def generate_random_numbers(pdf,
                 z = torch.linspace(xmin[element_number],
                                    xmax[element_number],
                                    n_integration,
-                                   device=device)
+                                   device=device, dtype=torch.float64)
                 c.append(
                     torch.max(pdf(z,
                                   *pars,
                                   **kwargs))
                 )
-        c = (torch.tensor(c, device=device)
-             * torch.ones(xmin.shape, device=device))
+        c = (torch.tensor(c, device=device, dtype=torch.float64)
+             * torch.ones(xmin.shape, device=device, dtype=torch.float64))
     # print("c = ", c)
-    while generate_size > 0:
+    if True in torch.isnan(c):
+        print("Shape of c: ", c.shape)
+        print("Shape of NaNs of c: ", c[torch.isnan(c)].shape)
+        print("xmin for Nans: ", xmin[torch.isnan(c)])
+        print("xmax for Nans: ", xmax[torch.isnan(c)])
+        raise RuntimeError("Nan occured in c!")
+    while len(x_final[x_final == float('Inf')]) > 0:
+        assignment = (x_final == float('Inf'))
+        generate_size = len(x_final[assignment])
         if logarithmic:
             x = 10.0**((torch.log10(xmax) -
                         torch.log10(xmin)) *
-                       torch.rand((generate_size,),
-                                  device=device) +
+                       torch.rand(shape,
+                                  device=device, dtype=torch.float64) +
                        torch.log10(xmin))
-            p = (pdf(x, *pars, **kwargs) * x)
+            p = (pdf(x, *pars, **kwargs) * x)[assignment]
+            x = x[assignment]
         else:
-            x = (xmax - xmin) * torch.rand(generate_size,
-                                           device=device) + xmin
-            p = pdf(x, *pars, **kwargs)
-        y_new = torch.rand((generate_size,),
-                           device=device) * c
+            x = ((xmax - xmin) *
+                 torch.rand(shape,
+                            device=device,
+                            dtype=torch.float64) + xmin)
+            p = (pdf(x, *pars, **kwargs))[assignment]
+            x = x[assignment]
+        if True in torch.isnan(x):
+            raise RuntimeError("Nan occured in x!")
+        if True in torch.isnan(p):
+            raise RuntimeError("Nan occured in p!")
+        y_new = torch.rand(
+            generate_size,
+            device=device, dtype=torch.float64) * c[assignment]
         filt = (y_new < p)
         x[torch.logical_not(filt)] = float('Inf')
-        x_final[x_final == float('Inf')] = x
-        xmax = xmax[torch.logical_not(filt)]
-        xmin = xmin[torch.logical_not(filt)]
-        c = c[torch.logical_not(filt)]
-        for i, param in enumerate(pars):
-            try:
-                iter(param)
-                pars[i] = param[torch.logical_not(filt)]
-            except TypeError:
-                pass
-        generate_size = len(x_final[x_final == float('Inf')])
+        x_final[assignment] = x
     return x_final
 
 ########################################################################
@@ -211,7 +224,7 @@ def generate_random_numbers(pdf,
 def generate_random_distance_traveled(e_particle: torch.tensor,
                                       e_particle_node: torch.tensor,
                                       r_particle_node: torch.tensor,
-                                      device=device):
+                                      device=device, dtype=torch.float64):
     """
     Generates tensor of random particle traveled distances
     at e_particle energy points given that the
@@ -223,7 +236,8 @@ def generate_random_distance_traveled(e_particle: torch.tensor,
         e_particle_node,
         r_particle_node
     )
-    uniform_random = torch.rand(e_particle.shape, device=device)
+    uniform_random = torch.rand(e_particle.shape, device=device,
+                                dtype=torch.float64)
     return (-torch.log(uniform_random) / r_particle)
 
 ########################################################################
@@ -232,10 +246,11 @@ def generate_random_distance_traveled(e_particle: torch.tensor,
 def generate_random_cosine(shape=(1,),
                            cosmin=-1.0,  # or tensor with size of shape
                            cosmax=1.0,  # or tensor with size of shape
-                           device=device):
+                           device=device, dtype=torch.float64):
     return(
         (cosmax - cosmin) * torch.rand(max(shape),
-                                       device=device) + cosmin
+                                       device=device,
+                                       dtype=torch.float64) + cosmin
     )
 
 ########################################################################
@@ -264,7 +279,8 @@ def sigma_pair_cross_section_reduced(s):
 def auxiliary_pair_production_function(x,  # min
                                        x_max,
                                        photon_field_file_path='',
-                                       device=device):
+                                       device=device,
+                                       dtype=torch.float64):
     dim2 = 100
     ys = []
     for i in range(0, max(x.shape)):
@@ -277,9 +293,9 @@ def auxiliary_pair_production_function(x,  # min
         y = background_photon_density_interpolated(
             x_primed,
             photon_field_file_path=photon_field_file_path,
-            device=device) / x_primed**2
+            device=device, dtype=torch.float64) / x_primed**2
         ys.append(torch.trapz(y, x_primed))
-    ys = torch.tensor(ys, device=device)
+    ys = torch.tensor(ys, device=device, dtype=torch.float64)
     print(f'ys.shape = {ys.shape}')
     return (ys)
 
@@ -287,17 +303,17 @@ def auxiliary_pair_production_function(x,  # min
 #######################################################################
 # eps_max = 1000.0  # eV
 # s_precalc = torch.logspace(float(torch.log10(torch.tensor(
-#     [S_MIN / (4.0 * 1.0e+15), ], device=device))),
+#     [S_MIN / (4.0 * 1.0e+15), ], device=device, dtype=torch.float64))),
 #     float(torch.log10(torch.tensor(
-#         [10000.0, ], device=device))),
+#         [10000.0, ], device=device, dtype=torch.float64))),
 #     10000,
-#     device=device)
+#     device=device, dtype=torch.float64)
 #
 # print(f"s_precalc.shape = {s_precalc.shape}")
 #
 # f_precalc = auxiliary_pair_production_function(s_precalc,
 #                                                photon_field_file_path=field,
-#                                                device=device)
+#                                                device=device, dtype=torch.float64)
 #
 # print(f"f_precalc.shape = {f_precalc.shape}")
 #
@@ -313,12 +329,12 @@ def pair_production_differential_cross_section_s(
         s,
         energy,
         photon_field_file_path='',
-        device=device):
+        device=device, dtype=torch.float64):
     return (sigma_pair_cross_section_reduced(s) *
             (auxiliary_pair_production_function(
                 s / (4.0 * energy),
                 eps_max * torch.ones(energy.shape,
-                                     device=device),
+                                     device=device, dtype=torch.float64),
                 photon_field_file_path=photon_field_file_path)
              / (8.0 * energy**2))
             )
@@ -326,15 +342,15 @@ def pair_production_differential_cross_section_s(
 
 ########################################################################
 # def generate_random_s_new(energy,
-#                           device=device):
+#                           device=device, dtype=torch.float64):
 #     return (generate_random_numbers(
 #         pair_production_differential_cross_section_s,
 #         pars=[energy, ],
 #         shape=energy.shape,
 #         xmin=S_MIN * torch.ones(energy.shape,
-#                                 device=device),
+#                                 device=device, dtype=torch.float64),
 #         xmax=4.0 * energy * eps_max * torch.ones(energy.shape,
-#                                                  device=device),
+#                                                  device=device, dtype=torch.float64),
 #         normalized=True,
 #         logarithmic=True,
 #         n_integration=300,
@@ -382,8 +398,10 @@ def IC_differential_cross_section_y(y, s):
 
 #######################################################################
 def generate_random_y(s,
+                      eps_thr=None,
                       logarithmic=True,
                       device=device,
+                      dtype=torch.float64,
                       process='PP'):  # or 'IC', i.e.
     # Pair Production or Inverse Compt
     """
@@ -400,19 +418,23 @@ def generate_random_y(s,
             pair_production_differential_cross_section_y,
             [s, ],
             shape=shape,
-            xmin=ELECTRON_REST_ENERGY**2 / s,
-            xmax=torch.ones(shape, device=device) * 0.999,
+            xmin=ELECTRON_REST_ENERGY**2 / s * 1.010,
+            xmax=torch.ones(shape, device=device,
+                            dtype=dtype) * 0.990,
             logarithmic=logarithmic,
             device=device,
             normalized=True,
             n_integration=300)
     elif process == 'IC':
+        if eps_thr is None:
+            eps_thr = 0.001
         return generate_random_numbers(
             IC_differential_cross_section_y,
             [s, ],
             shape=shape,
-            xmin=ELECTRON_REST_ENERGY**2 / s,
-            xmax=torch.ones(shape, device=device) * 0.999,
+            xmin=ELECTRON_REST_ENERGY**2 / s * 1.010,
+            xmax=(torch.ones(shape, device=device,
+                             dtype=dtype) - eps_thr) * 0.990,
             logarithmic=logarithmic,
             device=device,
             normalized=True,
@@ -436,17 +458,22 @@ def generate_random_background_photon_energy(
         field = np.loadtxt(photon_field_file_path)
     if energy_photon_min is None:
         energy_photon_min = field[0, 0]
-        xmin = torch.ones(shape, device=device) * energy_photon_min
+        xmin = torch.ones(shape, device=device,
+                          dtype=torch.float64) * energy_photon_min
     else:
-        xmin = torch.ones(shape, device=device) * energy_photon_min
+        xmin = torch.ones(shape, device=device,
+                          dtype=torch.float64) * energy_photon_min
     if energy_photon_max is None:
         energy_photon_max = field[-1, 0]
-        xmax = torch.ones(shape, device=device) * energy_photon_max
+        xmax = torch.ones(shape, device=device,
+                          dtype=torch.float64) * energy_photon_max
     else:
-        xmax = torch.ones(shape, device=device) * energy_photon_max
+        xmax = torch.ones(shape, device=device,
+                          dtype=torch.float64) * energy_photon_max
     pdf = partial(background_photon_density_interpolated,
                   photon_field_file_path=photon_field_file_path,
-                  device=device)
+                  device=device,
+                  dtype=torch.float64)
     return (generate_random_numbers(
         pdf,
         pars=[],
@@ -455,7 +482,7 @@ def generate_random_background_photon_energy(
         xmax=xmax,
         normalized=True,
         logarithmic=True,
-        n_integration=300,
+        n_integration=3000,
         device=device,
         **kwargs
     ))
@@ -468,13 +495,25 @@ def generate_random_s(energy,
                       device=device,
                       process='PP',  # or 'IC'
                       energy_ic_threshold=None,
+                      energy_photon_max=None,
+                      dtype=torch.float64,
                       **cosine_kwargs):
     if process == 'PP':
+        energy_photon_min = S_MIN / (4.0 * energy) * 1.010
+        filt_less_than_zero = (energy_photon_min < 0.0)
+        if True in filt_less_than_zero:
+            print('energy_photon_min[filt_less_than_zero] = ',
+                  energy_photon_min[filt_less_than_zero])
+            print('energy[filt_less_than_zero] = ',
+                  energy[filt_less_than_zero])
+            raise RuntimeError(
+                "There is less than zero value in energy_photon_min!")
         epsilon = generate_random_background_photon_energy(
             energy.shape,
             photon_field_file_path,
             device=device,
-            energy_photon_min=S_MIN / (4.0 * energy)
+            energy_photon_min=energy_photon_min,
+            energy_photon_max=energy_photon_max
         )
         if random_cosine:
             cosmax = 1.0 - S_MIN / (2.0 * epsilon * energy)
@@ -496,7 +535,8 @@ def generate_random_s(energy,
             photon_field_file_path,
             device=device,
             energy_photon_min=(eps_thr * ELECTRON_REST_ENERGY**2 /
-                               (2.0 * (1.0 + b) * (1.0 - eps_thr) * energy))
+                               (2.0 * (1.0 + b) * (1.0 - eps_thr) * energy)) * 1.010,
+            energy_photon_max=energy_photon_max
         )
         if random_cosine:
             cosmax = (1.0 - (eps_thr * ELECTRON_REST_ENERGY**2) /
@@ -658,11 +698,12 @@ def monte_carlo_process(
         observable_energy_max=1.0e+13 * u.eV,
         background_photon_energy_unit=u.eV,
         background_photon_density_unit=(u.eV * u.cm**3)**(-1),
-        terminator_generation_number=None,
+        energy_photon_max=None,
+        terminator_step_number=None,
         folder='output',
-        device=device):
+        device=device, dtype=torch.float64):
     """
-    gammas consists of 4 rows:
+    gammas and electrons consist of 3 rows:
 
     0) primary energy of individual particles;
     1) current (observable) energy of individual particles;
@@ -677,10 +718,12 @@ def monte_carlo_process(
     new_gammas = None
     shape = (primary_energy_tensor_size, )
     region_size = region_size.to(u.cm).value
+    if energy_photon_max is not None:
+        energy_photon_max = energy_photon_max.to(u.eV).value
     gammas = torch.zeros((3, primary_energy_tensor_size),
-                         device=device)
+                         device=device, dtype=torch.float64)
     electrons = torch.zeros((3, primary_energy_tensor_size),
-                            device=device)
+                            device=device, dtype=torch.float64)
     if primary_energy_tensor_user is not None:
         if primary_particle == 'gamma':
             gammas[0, :] = primary_energy_tensor_user
@@ -691,28 +734,36 @@ def monte_carlo_process(
                 "Unknown type of primary particle! Valid type is either 'gamma' or 'electron'!")
     else:
         if primary_particle == 'gamma':
+            no_gammas = False
+            no_electrons = True
             gammas[0, :] = generate_random_numbers(
                 primary_spectrum,
                 primary_spectrum_params,  # gamma, norm, en_ref
                 shape=shape,
                 xmin=(primary_energy_min.to(u.eV).value *
-                      torch.ones(shape, device=device)),
+                      torch.ones(shape, device=device,
+                                 dtype=torch.float64)),
                 xmax=(primary_energy_max.to(u.eV).value *
-                      torch.ones(shape, device=device)),
+                      torch.ones(shape, device=device,
+                                 dtype=torch.float64)),
                 device=device,
                 logarithmic=True,
                 n_integration=300,
                 normalized=True
             )
         elif primary_particle == 'electron':
+            no_electrons = False
+            no_gammas = True
             electrons[0, :] = generate_random_numbers(
                 primary_spectrum,
                 primary_spectrum_params,  # gamma, norm, en_ref
                 shape=shape,
                 xmin=(primary_energy_min.to(u.eV).value *
-                      torch.ones(shape, device=device)),
+                      torch.ones(shape, device=device,
+                                 dtype=torch.float64)),
                 xmax=(primary_energy_max.to(u.eV).value *
-                      torch.ones(shape, device=device)),
+                      torch.ones(shape, device=device,
+                                 dtype=torch.float64)),
                 device=device,
                 logarithmic=True,
                 n_integration=300,
@@ -721,25 +772,32 @@ def monte_carlo_process(
         else:
             raise ValueError(
                 "Unknown type of primary particle! Valid type is either 'gamma' or 'electron'!")
+    ######################################################################
+    # observable energy is equal to primary energy at the first step
     gammas[1, :] = gammas[0, :]
     electrons[1, :] = electrons[0, :]
     ######################################################################
     energy_ic_threshold = energy_ic_threshold.to(u.eV).value
     observable_energy_min = observable_energy_min.to(u.eV).value
+    # observable_energy_min = np.min([observable_energy_min,
+    #                                 energy_ic_threshold])
     observable_energy_max = observable_energy_max.to(u.eV).value
+    if observable_energy_max <= observable_energy_min:
+        raise ValueError(
+            "observable_energy_min must be less than observable_energy_max!")
     en = np.logspace(np.log10(observable_energy_min),
                      np.log10(observable_energy_max),
-                     1000)
+                     10_000)
     e_gamma_node, r_gamma_node = gamma_gamma.interaction_rate(
         photon_field_file_path,
-        observable_energy_min * u.eV,
-        observable_energy_max * u.eV,
+        observable_energy_min * u.eV * 0.90,
+        observable_energy_max * u.eV * 1.10,
         background_photon_energy_unit=background_photon_energy_unit,
         background_photon_density_unit=background_photon_density_unit)
     e_ic_node, r_ic_node = ic.IC_interaction_rate(
         photon_field_file_path,
-        observable_energy_min * u.eV,
-        observable_energy_max * u.eV,
+        observable_energy_min * u.eV * 0.90,
+        observable_energy_max * u.eV * 1.10,
         energy_ic_threshold * u.eV,
         background_photon_energy_unit=background_photon_energy_unit,
         background_photon_density_unit=background_photon_density_unit)
@@ -749,117 +807,197 @@ def monte_carlo_process(
     r_ic_node = spec.to_current_energy(en * u.eV,
                                        e_ic_node,
                                        r_ic_node).to(u.cm**(-1))
-    e_gamma_node = torch.tensor(en, device=device)
-    r_gamma_node = torch.tensor(r_gamma_node.value, device=device)
-    e_ic_node = torch.tensor(en, device=device)
-    r_ic_node = torch.tensor(r_ic_node.value, device=device)
+    e_gamma_node = torch.tensor(en, device=device,
+                                dtype=torch.float64)
+    r_gamma_node = torch.tensor(r_gamma_node.value, device=device,
+                                dtype=torch.float64)
+    e_ic_node = torch.tensor(en, device=device,
+                             dtype=torch.float64)
+    r_ic_node = torch.tensor(r_ic_node.value, device=device,
+                             dtype=torch.float64)
     ######################################################################
-    ngen = 0
-    while (gammas.shape[1] > 0):
+    nstep = 0
+    while (len(gammas) > 0) or (len(electrons) > 0):
+        print(f"Step number {nstep}:")
         # Sample the distance traveled
-        if gammas[1, 0] > 0:
-            gammas[2, :] += generate_random_distance_traveled(
+        if no_gammas == False:
+            traveled = generate_random_distance_traveled(
                 gammas[1, :],
                 e_gamma_node,
                 r_gamma_node)
-        elif electrons[1, 0] > 0:
-            electrons[2, :] += generate_random_distance_traveled(
+            print("Median distance traveled by gamma rays at this step: {:.3e} cm = {:.2f} % of region size".format(
+                torch.median(traveled),
+                torch.median(traveled) / region_size * 100.0
+            ))
+            gammas[2, :] += traveled
+        if no_electrons == False:
+            traveled = generate_random_distance_traveled(
                 electrons[1, :],
                 e_ic_node,
                 r_ic_node)
-        else:
-            raise ValueError(
-                "Unknown type of primary particle! Valid type is either 'gamma' or 'electron'!")
+            electrons[2, :] += traveled
+            print("Median distance traveled by electrons at this step: {:.3e} cm = {:.2f} % of region size".format(
+                torch.median(traveled),
+                torch.median(traveled) / region_size * 100.0
+            ))
         ###################################################################
         # Save out escaped particles and
         # update gammas and electrons removing escaped particles.
-        if gammas[1, 0] > 0:
+        if no_gammas == False:
             filter_escaped = (gammas[2, :] > region_size)
+            filter_escaped = torch.logical_or(filter_escaped,
+                                              (gammas[1, 0] <
+                                               observable_energy_min))
             filter_not_escaped = torch.logical_not(filter_escaped)
-            torch.save(torch.stack([gammas[0, :][filter_escaped],
-                                    gammas[1, :][filter_escaped],
-                                    gammas[2, :][filter_escaped]]),
-                       folder + '/' + 'gammas_' +
-                       'generation000' + str(ngen) +
-                       '_' + get_date_time() + '.pt')
+            if len(filter_escaped[filter_escaped == True]) > 0:
+                torch.save(torch.stack([gammas[0, :][filter_escaped],
+                                        gammas[1, :][filter_escaped],
+                                        gammas[2, :][filter_escaped]]),
+                           folder + '/' + 'gammas_' +
+                           'step000' + str(nstep) +
+                           '_' + get_date_time() + '.pt')
             gammas = torch.stack([gammas[0, :][filter_not_escaped],
                                   gammas[1, :][filter_not_escaped],
                                   gammas[2, :][filter_not_escaped]])
-        if electrons[1, 0] > 0:
+        if no_electrons == False:
             filter_escaped = (electrons[2, :] > region_size)
+            filter_escaped = torch.logical_or(filter_escaped,
+                                              (electrons[1, 0] <
+                                               observable_energy_min))
             filter_not_escaped = torch.logical_not(filter_escaped)
-            torch.save(torch.stack([electrons[0, :][filter_escaped],
-                                    electrons[1, :][filter_escaped],
-                                    electrons[2, :][filter_escaped]]),
-                       folder + '/' + 'electrons_' +
-                       'generation000' + str(ngen) +
-                       '_' + get_date_time() + '.pt')
+            if len(filter_escaped[filter_escaped == True]) > 0:
+                torch.save(torch.stack([electrons[0, :][filter_escaped],
+                                        electrons[1, :][filter_escaped],
+                                        electrons[2, :][filter_escaped]]),
+                           folder + '/' + 'electrons_' +
+                           'step000' + str(nstep) +
+                           '_' + get_date_time() + '.pt')
             electrons = torch.stack([electrons[0, :][filter_not_escaped],
                                      electrons[1, :][filter_not_escaped],
                                      electrons[2, :][filter_not_escaped]])
+        if len(gammas[1, :]) == 0:
+            no_gammas = True
+        if len(electrons[1, :]) == 0:
+            no_electrons = True
+        if no_electrons and no_gammas:
+            break
         ###################################################################
         # Generate s
-        if gammas[1, 0] > 0:
-            s_gammas = generate_random_s(interacted_energy_IC,
-                                         photon_field_file_path,
-                                         random_cosine=True,
-                                         process='PP',
-                                         device=device)
-        if electrons[1, 0] > 0:
+        if no_gammas == False:
+            s_gammas = generate_random_s(
+                gammas[1, :],
+                photon_field_file_path,
+                random_cosine=True,
+                process='PP',
+                device=device,
+                energy_photon_max=energy_photon_max)
+        if no_electrons == False:
             s_electrons = generate_random_s(
-                interacted_energy_IC,
-                field,
+                electrons[1, :],
+                photon_field_file_path,
                 random_cosine=True,
                 process='IC',
                 energy_ic_threshold=energy_ic_threshold,
-                device=device)
+                device=device,
+                energy_photon_max=energy_photon_max)
         ###################################################################
         # Sample transfered energy
-        if gammas[1, 0] > 0:
+        if no_gammas == False:
             y_from_gammas = generate_random_y(s_gammas,
                                               process='PP',
                                               logarithmic=True,
-                                              device=device)
-        if electrons[1, 0] > 0:
+                                              device=device,
+                                              dtype=torch.float64)
+        if no_electrons == False:
+            eps_thr = energy_ic_threshold / electrons[1, :]
             y_from_electrons = generate_random_y(s_electrons,
+                                                 eps_thr=eps_thr,
                                                  process='IC',
+                                                 logarithmic=True,
                                                  device=device,
-                                                 logarithmic=True)
+                                                 dtype=torch.float64)
+            filt_greater_than_one = (y_from_electrons > 1.0)
+            if True in filt_greater_than_one:
+                warnings.warn(
+                    "There is y_from_electrons greater than one!",
+                    UserWarning)
+                print("y_from_electrons[filt_greater_than_one] = ",
+                      y_from_electrons[filt_greater_than_one])
+                y_from_electrons[filt_greater_than_one] = (
+                    1.0 - eps_thr[filt_greater_than_one]
+                )
         ###################################################################
         # Create cascade particles
-        if gammas[1, 0] > 0:
+        if no_gammas == False:
             new_electrons = torch.stack(
-                gammas[0, :],
-                y_from_gammas * gammas[1, :],
-                gammas[2, :])
+                [gammas[0, :],
+                 y_from_gammas * gammas[1, :],
+                 gammas[2, :]])
             new_positrons = torch.stack(
-                gammas[0, :],
-                (1.0 - y_from_gammas) * gammas[1, :],
-                gammas[2, :])
+                [gammas[0, :],
+                 (1.0 - y_from_gammas) * gammas[1, :],
+                 gammas[2, :]])
             new_electrons = torch.cat([new_electrons, new_positrons],
                                       dim=1)
             new_positrons = None
             gammas[1, :] = 0.0  # all gammas were absorbed
-        if electrons[1, 0] > 0:
+            no_gammas = True
+        if no_electrons == False:
             new_gammas = torch.stack(
-                electrons[0, :],
-                (1.0 - y_from_electrons) * electrons[1, :],
-                electrons[2, :])
-            new_positrons = torch.stack(
-                electrons[0, :],
-                y_from_electrons * electrons[1, :],
-                electrons[2, :])
+                [electrons[0, :],
+                 (1.0 - y_from_electrons) * electrons[1, :],
+                 electrons[2, :]])
+            electrons = torch.stack(
+                [electrons[0, :],
+                 y_from_electrons * electrons[1, :],
+                 electrons[2, :]])
+            no_electrons = False
         if new_electrons is not None:
-            electrons = torch.cat([electrons, new_electrons], dim=1)
-        if new_positrons is not None:
-            electrons = torch.cat([electrons, new_positrons], dim=1)
+            if no_electrons == False:
+                electrons = torch.cat([electrons, new_electrons], dim=1)
+            else:
+                electrons = new_electrons
+                no_electrons = False
+            new_electrons = None
         if new_gammas is not None:
             gammas = new_gammas
+            new_gammas = None
+            no_gammas = False
         ###################################################################
-        print(f"Generation number {ngen} calculated")
-        print(f"There are {gammas.shape[1]} particles to be tracked further")
-        ngen = ngen + 1
-        if (ngen >= terminator_generation_number):
+        if len(gammas[1, :]) == 0:
+            no_gammas = True
+        if len(electrons[1, :]) == 0:
+            no_electrons = True
+        if no_electrons and no_gammas:
+            break
+        print(
+            f"There are {gammas[1, :][gammas[1, :] > 0].shape[0]} gamma rays to be tracked further")
+        print(
+            "Maximum energy among gamma rays: {:.3e} eV".format(
+                torch.max(gammas[1, :])
+            ))
+        print(
+            "Median traveled distance of gamma rays: {:.3e} cm = {:.2f}% of region size".format(
+                torch.median(gammas[2, :]),
+                torch.median(gammas[2, :]) / region_size * 100.0
+            )
+        )
+        print(
+            f"There are {electrons[1, :][electrons[1, :] > 0].shape[0]} electrons to be tracked further")
+        print(
+            "Maximum energy among electrons: {:.3e} eV".format(
+                torch.max(electrons[1, :])
+            ))
+        print(
+            "Median traveled distance of electrons: {:.3e} cm = {:.2f}% of region size".format(
+                torch.median(electrons[2, :]),
+                torch.median(electrons[2, :]) / region_size * 100.0
+            ))
+        print("\n")
+        nstep += 1
+        if (nstep > terminator_step_number):
+            break
+        if no_electrons == True and no_gammas == True:
             break
     print("Done!")
     print('Monte-Carlo process finished: ', get_date_time())
@@ -872,13 +1010,13 @@ def monte_carlo_process(
 # start_event.record()
 # ########################################################################
 # # #1 generate tensor with initial energy of primary gamma rays
-# primary_energy = primary_energy_0 * torch.ones((size,), device=device)
+# primary_energy = primary_energy_0 * torch.ones((size,), device=device, dtype=torch.float64)
 # ########################################################################
 # # #2 sample distance traveled by primary gamma rays
 # print("For {:e} eV interaction rate is {} 1 / cm".format(
 #     primary_energy_0,
 #     torch_interpolation(torch.tensor([primary_energy_0, ],
-#                                      device=device),
+#                                      device=device, dtype=torch.float64),
 #                         energy_gamma_node,
 #                         r_gamma_gamma_node)
 # )
@@ -909,13 +1047,13 @@ def monte_carlo_process(
 # s = generate_random_s(interacted_energy,
 #                       field,
 #                       random_cosine=True,
-#                       device=device)
+#                       device=device, dtype=torch.float64)
 # # x = S_MIN / (4.0 * interacted_energy)
-# # x_max = torch.ones(interacted_energy.shape, device=device) * 10.0  # eV
+# # x_max = torch.ones(interacted_energy.shape, device=device, dtype=torch.float64) * 10.0  # eV
 # # aux = auxiliary_pair_production_function(x,
 # #                                          x_max,
 # #                                          photon_field_file_path=field,
-# #                                          device=device)
+# #                                          device=device, dtype=torch.float64)
 # print("Mean square root of s is {:.3e}".format((
 #     torch.mean(s)
 # )**0.5))
@@ -936,26 +1074,26 @@ def monte_carlo_process(
 # s_theory = torch.logspace(torch.log10(torch.min(s) * 1.1),
 #                           torch.log10(torch.max(s)),
 #                           theory_size,
-#                           device=device)
+#                           device=device, dtype=torch.float64)
 # rho_s = pair_production_differential_cross_section_s(
 #     s_theory,
-#     torch.ones(s_theory.shape, device=device) * torch.max(primary_energy),
+#     torch.ones(s_theory.shape, device=device, dtype=torch.float64) * torch.max(primary_energy),
 #     photon_field_file_path=field,
-#     device=device)
+#     device=device, dtype=torch.float64)
 # print(f'rho_s = {rho_s}')
 # # sigma_s = sigma_pair_cross_section_reduced(s_theory)
 # # # ########################################################################
 # # # # #6 Generate electron energy
 # # # y = generate_random_y(s,
 # # #                       logarithmic=True,
-# # #                       device=device)
+# # #                       device=device, dtype=torch.float64)
 # # # print("Mean y = {:.2e}".format(torch.mean(y)))
 # # # electron_energy = y * interacted_energy
 # # # positron_energy = (1.0 - y) * interacted_energy
 # # # lepton_energy = torch.cat((electron_energy, positron_energy), dim=-1)
 # # # ########################################################################
 # # # # Run some things here
-# # # # E_gamma = torch.tensor(E_gamma, device=device)
+# # # # E_gamma = torch.tensor(E_gamma, device=device, dtype=torch.float64)
 # # # # print(E_gamma.device)
 # # # # x = spec.power_law(E_gamma, 2.0, en_ref=1.0, norm=1.0)
 # # # # print(x.device)
@@ -964,9 +1102,9 @@ def monte_carlo_process(
 # # # #                                   [1, 100.0, 10.0],
 # # # #                                   shape=(1_000_000,),
 # # # #                                   xmin=torch.tensor(1.,
-# # # #                                                     device=device),
+# # # #                                                     device=device, dtype=torch.float64),
 # # # #                                   xmax=torch.tensor(1000.,
-# # # #                                                     device=device),
+# # # #                                                     device=device, dtype=torch.float64),
 # # # #                                   normalized=False,
 # # # #                                   logarithmic=True,
 # # # #                                   n_integration=300,
@@ -980,7 +1118,7 @@ def monte_carlo_process(
 # # # #                      np.zeros(x.shape),
 # # # #                      np.ones(x.shape),
 # # # #                      np.ones(x.shape)],
-# # # #                     device=device)
+# # # #                     device=device, dtype=torch.float64)
 # # # # print(gammas.shape)
 # # # # ########################################################################
 # # # # photon_field_file_path = (
@@ -1001,13 +1139,13 @@ def monte_carlo_process(
 # # # # print(f"energy_photon_max = {energy_photon_max}")
 # # # # pdf = partial(background_photon_density_interpolated,
 # # # #               photon_field_file_path=photon_field_file_path,
-# # # #               device=device)
+# # # #               device=device, dtype=torch.float64)
 # # # # en = torch.logspace(torch.log10(torch.tensor(energy_photon_min,
-# # # #                                              device=device)),
+# # # #                                              device=device, dtype=torch.float64)),
 # # # #                     torch.log10(torch.tensor(energy_photon_max,
-# # # #                                              device=device)),
+# # # #                                              device=device, dtype=torch.float64)),
 # # # #                     10000,
-# # # #                     device=device)
+# # # #                     device=device, dtype=torch.float64)
 # # # # density = pdf(en)
 # # # # norm = torch.trapz(density, en)
 # # # # mean_photon_energy = torch.trapz(density * en, en) / norm

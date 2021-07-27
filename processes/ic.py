@@ -9,6 +9,7 @@ import numpy as np
 from scipy.integrate import simps
 import matplotlib.pyplot as plt
 import subprocess  # to run prompt scripts from python
+import warnings
 try:
     import processes.spectra as spec
 except:
@@ -76,7 +77,7 @@ def inverse_compton_over_photon_field(alpha,
     background_photon_density_unit parameter.
     """
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
-    ###########################################################################
+    #########################################################################
     if type(field) == type(''):
         try:
             field = np.loadtxt(field)
@@ -91,16 +92,18 @@ def inverse_compton_over_photon_field(alpha,
     else:
         raise ValueError(
             "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
-    ###########################################################################
+    #########################################################################
     particle_mass = particle_mass.to(u.g, u.mass_energy())
     r0 = particle_charge**2 / (particle_mass * (const.c.cgs)**2)
     rest_energy = particle_mass.to(u.eV, u.mass_energy())
     try:
         a_un = alpha.unit
     except:
+        warnings.warn("'alpha' is not an astropy Quantity with energy unit!\nIt is interpreted as in units of electron rest energy!\nMake sure you did not miss energy unit for 'alpha' argument!",
+                      UserWarning)
         a_un = ''
     k = np.pi * r0 * r0 * const.c.cgs
-    ###########################################################################
+    #########################################################################
     if type(energy) == type(3.0) or type(energy) == type(1) \
             or type(energy) == type(np.arange(0, 3)):
         g = energy
@@ -110,7 +113,7 @@ def inverse_compton_over_photon_field(alpha,
         g = (energy / rest_energy).decompose().value
     else:
         raise ValueError("invalid type of the argument 'energy'")
-    ############################################################################
+    #########################################################################
     if type(eps) == type(3.0) or type(eps) == type(1) \
             or type(eps) == type(np.arange(0, 3)):
         pass
@@ -121,7 +124,7 @@ def inverse_compton_over_photon_field(alpha,
     else:
         raise ValueError(
             "invalid type of the argument 'eps' (first column of 'field')")
-    ############################################################################
+    ########################################################################
     if type(alpha) == type(3.0) or type(alpha) == type(1) \
             or type(alpha) == type(np.arange(0, 3)):
         pass
@@ -131,7 +134,7 @@ def inverse_compton_over_photon_field(alpha,
         alpha = (alpha / rest_energy).decompose().value
     else:
         raise ValueError("invalid type of the argument 'alpha'")
-    ############################################################################
+    #########################################################################
     if len(eps) < 1:
         raise ValueError(
             "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy & density).")
