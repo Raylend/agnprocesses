@@ -170,7 +170,7 @@ double IC_rate(double E, double E_thr)
     const double s_max = ELECTRON_REST_ENERGY * ELECTRON_REST_ENERGY + 2.0 * E * eps_max * (1.0 + beta(E));
     const double eps_thr = E_thr / E;
     const double s_min = ELECTRON_REST_ENERGY * ELECTRON_REST_ENERGY / (1.0 - eps_thr);
-    const unsigned int n_int = 50000;
+    const unsigned int n_int = 10000;
     double a_s = log10(s_max / s_min) / (double) n_int;
     double s[n_int];
     for (int l = 0; l < n_int; l++)
