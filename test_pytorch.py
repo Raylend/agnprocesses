@@ -1,3 +1,4 @@
+from math import log10
 import torch
 import numpy as np
 import processes.ic as ic
@@ -103,6 +104,10 @@ def generate_random_numbers(pdf,
                             device=None,
                             verbose=False,  # deprecated
                             **kwargs):
+    filt_min_max = (xmin <= xmax)
+    if False in filt_min_max:
+        print(xmin[torch.logical_not(filt_min_max)])
+        raise ValueError("xmin > xmax!")
     x_final = float('Inf') * torch.ones(shape,
                                         device=device, dtype=torch.float64)
     if logarithmic:
@@ -410,12 +415,13 @@ def generate_random_y(s,
                       device=device,
                       dtype=torch.float64,
                       process='PP'):  # or 'IC', i.e.
-    # Pair Production or Inverse Compt
+    # Pair Production or Inverse Compton
     """
     Generates random fraction of the squared total energy s for
     electrons (positrons) produced in gamma-gamma collisions
     in accordance with
-    pair_production_differential_cross_section_y(y, s).
+    pair_production_differential_cross_section_y(y, s)
+    or IC_differential_cross_section_y.
 
     Returns a torch.tensor of the requested shape.
     """
@@ -425,9 +431,9 @@ def generate_random_y(s,
             pair_production_differential_cross_section_y,
             [s, ],
             shape=shape,
-            xmin=ELECTRON_REST_ENERGY**2 / s * 1.010,
+            xmin=ELECTRON_REST_ENERGY**2 / s * 0.99,
             xmax=torch.ones(shape, device=device,
-                            dtype=dtype) * 0.990,
+                            dtype=dtype) * 0.99,
             logarithmic=logarithmic,
             device=device,
             normalized=True,
@@ -439,9 +445,9 @@ def generate_random_y(s,
             IC_differential_cross_section_y,
             [s, ],
             shape=shape,
-            xmin=ELECTRON_REST_ENERGY**2 / s * 1.010,
+            xmin=ELECTRON_REST_ENERGY**2 / s * 0.99,
             xmax=(torch.ones(shape, device=device,
-                             dtype=dtype) - eps_thr) * 0.990,
+                             dtype=dtype) - eps_thr) * 0.99,
             logarithmic=logarithmic,
             device=device,
             normalized=True,
@@ -607,7 +613,8 @@ def reweight_2d_histogram(histogram_2d,
                           new_keyargs={},
                           reweight_array='primary',  # or 'another'
                           return_1d=True,
-                          number_of_particles=1):
+                          number_of_particles=1,
+                          old=False):
     if type(primary_energy_center) == torch.Tensor:
         primary_energy_center = primary_energy_center.detach().to(
             'cpu'
@@ -628,18 +635,32 @@ def reweight_2d_histogram(histogram_2d,
     old_spec = original_spectrum(x, *original_params, **original_keyargs)
     k_modif = (new_spec / old_spec)
     n_particles_theory_old = simps(old_spec, x)
-    histogram_2d = histogram_2d * k_modif
-    histogram_2d = (histogram_2d * n_particles_theory_old /
-                    number_of_particles)
+    h = np.copy(histogram_2d)
+    if reweight_array == 'primary':
+        for i in range(0, h.shape[0]):
+            h[i, :] = h[i, :] * k_modif[i]
+    elif reweight_array == 'another':
+        for i in range(0, h.shape[0]):
+            h[:, i] = h[:, i] * k_modif[i]
+    else:
+        warnings.warn("Reweighting with primary energy array",
+                      UserWarning)
+        for i in range(0, h.shape[0]):
+            h[i, :] = h[i, :] * k_modif[i]
+    h = (h * n_particles_theory_old /
+         number_of_particles)
     if return_1d:
         if reweight_array == 'primary':
-            return np.sum(histogram_2d, axis=0)
+            return np.sum(h, axis=0).reshape(
+                another_energy_center.shape)
         elif reweight_array == 'another':
-            return np.sum(histogram_2d, axis=1)
+            return np.sum(h, axis=1).reshape(
+                primary_energy_center.shape)
         else:
-            return np.sum(histogram_2d, axis=0)
+            return np.sum(h, axis=0).reshape(
+                primary_energy_center.shape)
     else:
-        return histogram_2d
+        return h
 
 
 ########################################################################
@@ -657,7 +678,8 @@ def make_SED(
         reweight_array='primary',
         number_of_particles=1,
         density=False,
-        histogram_2d_precalculated=None):
+        histogram_2d_precalculated=None,
+        old=False):
     if type(primary_energy) == torch.Tensor:
         primary_energy = primary_energy.detach().to('cpu').numpy()
     if type(energy_array) == torch.Tensor:
@@ -697,7 +719,8 @@ def make_SED(
         new_keyargs=new_keyargs,
         reweight_array=reweight_array,  # or 'another'
         return_1d=True,
-        number_of_particles=number_of_particles
+        number_of_particles=number_of_particles,
+        old=old
     )
     spectrum = spectrum / (energy_bins[1:] - energy_bins[:-1])
     return (another_energy_center, spectrum * another_energy_center**2)
@@ -735,7 +758,10 @@ def make_sed_from_monte_carlo_cash_files(
     number_of_particles=1,
     particles_of_interest='gamma',  # or 'electron'
     density=False,
-    device='cpu'
+    verbose=False,
+    output='sed',  # or 'histogram_2d_precalculated'
+    device='cpu',
+    old=False
 ):
     """
     This function takes two positional arguments:
@@ -777,7 +803,7 @@ def make_sed_from_monte_carlo_cash_files(
                 tens[1, :],
                 bins_primary=primary_energy_bins,
                 bins_another=energy_bins,
-                verbose=False,
+                verbose=verbose,
                 density=density
             )
         elif cascade_type_of_particles == 'survived':
@@ -787,7 +813,7 @@ def make_sed_from_monte_carlo_cash_files(
                 tens[1, :][filt_survived],
                 bins_primary=primary_energy_bins,
                 bins_another=energy_bins,
-                verbose=False,
+                verbose=verbose,
                 density=density
             )
         elif cascade_type_of_particles == 'cascade':
@@ -797,29 +823,35 @@ def make_sed_from_monte_carlo_cash_files(
                 tens[1, :][filt_cascade],
                 bins_primary=primary_energy_bins,
                 bins_another=energy_bins,
-                verbose=False,
+                verbose=verbose,
                 density=density
             )
         else:
             raise ValueError(
                 "Unknown option of cascade_type_of_particles!"
             )
-    return (make_SED(
-        None,
-        energy_bins,
-        None,
-        primary_energy_bins=primary_energy_bins,
-        original_spectrum=original_spectrum,
-        original_params=original_params,
-        new_spectrum=new_spectrum,
-        new_params=new_params,
-        original_keyargs=original_keyargs,
-        new_keyargs=new_keyargs,
-        reweight_array=reweight_array,
-        number_of_particles=number_of_particles,
-        density=density,
-        histogram_2d_precalculated=hist)
-    )
+    if output == 'sed':
+        return (make_SED(
+            None,
+            energy_bins,
+            None,
+            primary_energy_bins=primary_energy_bins,
+            original_spectrum=original_spectrum,
+            original_params=original_params,
+            new_spectrum=new_spectrum,
+            new_params=new_params,
+            original_keyargs=original_keyargs,
+            new_keyargs=new_keyargs,
+            reweight_array=reweight_array,
+            number_of_particles=number_of_particles,
+            density=density,
+            histogram_2d_precalculated=hist,
+            old=old)
+        )
+    elif output == 'histogram_2d_precalculated':
+        return hist
+    else:
+        raise ValueError("Unknown value of 'output' option!")
 
 
 #######################################################################
@@ -1042,6 +1074,12 @@ def monte_carlo_process(
                 process='PP',
                 device=device,
                 energy_photon_max=energy_photon_max)
+            print("HERE GENERATES S_GAMMAS!!!")
+            filt_s_gammas = (s_gammas >= S_MIN)
+            print("There are {:d} gamma interactions under S_MIN".format(
+                (filt_s_gammas[filt_s_gammas == False]).shape[0])
+            )
+            s_gammas = s_gammas[filt_s_gammas]
         if no_electrons == False:
             eps_thr = energy_ic_threshold / electrons[1, :]
             s_electrons = generate_random_s(
@@ -1052,6 +1090,15 @@ def monte_carlo_process(
                 energy_ic_threshold=energy_ic_threshold,
                 device=device,
                 energy_photon_max=energy_photon_max)
+            filt_s_electrons = (s_electrons >= (ELECTRON_REST_ENERGY**2 /
+                                (1.0 - eps_thr)))
+            print(
+                "There are {:d} electron interactions under ELECTRON_REST_ENERGY**2 / (1.0 - eps_thr)".format(
+                    (filt_s_electrons[filt_s_electrons == False]).shape[0])
+            )
+            s_electrons = s_electrons[filt_s_electrons]
+            eps_thr = eps_thr[filt_s_electrons]
+            traveled_electrons = traveled_electrons[filt_s_electrons]
             if ic_losses_below_threshold:
                 electron_losses = (ic_electron_energy_loss_distance_rate(
                     s_electrons, eps_thr) * traveled_electrons
@@ -1083,26 +1130,32 @@ def monte_carlo_process(
         ###################################################################
         # Sample transfered energy
         if no_gammas == False:
-            y_from_gammas = generate_random_y(s_gammas,
-                                              process='PP',
-                                              logarithmic=True,
-                                              device=device,
-                                              dtype=torch.float64)
+            y_from_gammas = generate_random_y(
+                s_gammas,
+                process='PP',
+                logarithmic=True,
+                device=device,
+                dtype=torch.float64
+            )
         if no_electrons == False:
-            y_from_electrons = generate_random_y(s_electrons,
-                                                 eps_thr=eps_thr,
-                                                 process='IC',
-                                                 logarithmic=True,
-                                                 device=device,
-                                                 dtype=torch.float64)
+            y_from_electrons = generate_random_y(
+                s_electrons,
+                eps_thr=eps_thr,
+                process='IC',
+                logarithmic=True,  # AHTUNG ATTENTION !!!
+                device=device,
+                dtype=torch.float64
+            )
             filt_greater_than_one = (y_from_electrons > 1.0)
             if True in filt_greater_than_one:
                 warnings.warn(
                     "There is y_from_electrons greater than one!",
                     UserWarning)
-                print("There are {:d} cases".format(
-                    len(y_from_electrons[filt_greater_than_one])
-                ))
+                print(
+                    "There are {:d} cases of y_from_electrons greater than one!".format(
+                        len(y_from_electrons[filt_greater_than_one])
+                    )
+                )
                 # print("y_from_electrons[filt_greater_than_one] = ",
                 #       y_from_electrons[filt_greater_than_one])
                 y_from_electrons[filt_greater_than_one] = (
@@ -1184,9 +1237,27 @@ def monte_carlo_process(
     print("Done!")
     print('Monte-Carlo process finished: ', date_time_string_human_friendly())
     t_stop = get_current_date_time()
-    print("Total time of calculations: {:d} seconds".format(
-        time_delta_to_seconds(
+    print("Total time of calculations: {:d}".format(
+        (
             t_stop - t_start
         ))
     )
     return None
+
+
+############################################################################
+# s = 1.0e+15 * torch.ones((100_000, ), device='cuda', dtype=torch.float64)
+# s = torch.logspace(log10(ELECTRON_REST_ENERGY**2),
+#                    16,
+#                    1_000,
+#                    device='cuda', dtype=torch.float64)
+# eps_thr = 1.0e-06
+# y = generate_random_y(s,
+#                       eps_thr=eps_thr,
+#                       logarithmic=True,
+#                       device=device,
+#                       dtype=torch.float64,
+#                       process='IC')
+# print('max of y = {:.6e}'.format(torch.max(y)))
+# print('median of y = {:.6e}'.format(torch.median(y)))
+# print('min of y = {:.6e}'.format(torch.min(y)))
