@@ -57,9 +57,43 @@ if __name__ == '__main__':
             np.log10(tev10_01[:, 1])]  # z
     f_01 = (interpolate.interp2d(e_Timur, e0_Timur, z_01,
                                  kind='linear',
-                                 copy=False,
+                                 copy=True,
                                  bounds_error=False,
                                  fill_value=None))
+    ########################################################################
+
+    def sigma_pp_inelastic_cross_section(e):
+        """
+        proton-proton cross section:
+        see http://dx.doi.org/10.1103/PhysRevD.74.034018
+        (Kelner et al. (2006), eq. (79))
+        """
+        e = e.to(u.TeV)
+        L = np.log(e.value)
+        e_thr = (1.22e-03 * u.TeV).to(u.eV)
+        return ((34.3 + 1.88 * L + 0.25 * L**2) *
+                (1.0 - (e_thr / e)**4)**2 * 1.0e-24 * u.cm**2)
+
+    F_gamma_table = np.loadtxt("data/Processes-Timur/ProtonProtonGamma-1e16")
+    logx1 = np.log10(F_gamma_table[:, 0])
+    logy1 = np.log10(F_gamma_table[:, 1])
+    log_F_gamma_interpol = interpolate.interp1d(logx1, logy1,
+                                                kind='linear',
+                                                bounds_error=False,
+                                                fill_value='extrapolate')
+
+    def F_gamma_interpol_aux(x):
+        xl = np.log10(x)
+        return ((10.0**log_F_gamma_interpol(xl)) / x**2)
+
+    def F_gamma_approx(E_gamma, E_proton):
+        """
+        Returns the spectrum of gamma rays from proton-proton interactions
+        in frame of the scaling (1 / E_proton) approximation.
+        """
+        x = E_gamma / E_proton
+        return (F_gamma_interpol_aux(x) / E_proton)
+    ########################################################################
 
     def Timur_cascade_01(e_gamma, e0):
         # see https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.interp2d.html
@@ -102,7 +136,7 @@ if __name__ == '__main__':
     r_blr = (0.036 * u.pc).to(u.cm)  # BLR radius
     print("r_blr = {:.3e}".format(r_blr))
     d_l = cosmology.luminosity_distance(z).to(u.cm)
-    print("d_l = {:.6e}".format(d_l))
+    print("d_l = {:.3e} = {:.3e}".format(d_l.to(u.cm), d_l.to(u.Mpc)))
     # b = 50.0 * u.mG  # 50 milligauss, you can use, e.g. u.kG, u.mkG and so on
     # print("B = {:.6e}".format(b))
     ########################################################################
@@ -159,6 +193,7 @@ if __name__ == '__main__':
         SED = SED * np.exp(-ebl.tau_gilmore(en_observable * u.eV, z))
         SED = SED / (1.0 + redshift)
         return SED
+
     #########################################################################
     # Data Fermi-LAT
     data_fermi = np.loadtxt(
@@ -177,8 +212,42 @@ if __name__ == '__main__':
     data_low_magic = data_magic[:, 2] * 1.0e+06  # MeV -> eV
     data_up_magic = data_magic[:, 3] * 1.0e+06  # MeV -> eV
     yerr_magic = [data_low_magic, data_up_magic]
-
     #########################################################################
+    data_syst_magic_up = np.loadtxt(
+        "data/PKS1510-089/MAGIC_systematics_up.txt"
+    )
+    syst_magic_en_up = data_syst_magic_up[:, 0] * 1.0e+09  # GeV -> eV
+    syst_magic_sed_up = data_syst_magic_up[:, 1] * 1.0e+12  # TeV -> eV
+    data_syst_magic_down = np.loadtxt(
+        "data/PKS1510-089/MAGIC_systematics_down.txt"
+    )
+    syst_magic_en_down = data_syst_magic_down[:, 0] * 1.0e+09  # GeV -> eV
+    syst_magic_sed_down = data_syst_magic_down[:, 1] * 1.0e+12  # TeV -> eV
+    syst_magic_en_common = np.sort(np.concatenate(
+        [syst_magic_en_down, syst_magic_en_up]
+    ))
+
+    def syst_magic_interpolated_down_function(e):
+        return(10.0**interpolate.interp1d(
+            np.log10(syst_magic_en_down), np.log10(syst_magic_sed_down),
+            kind='linear',
+            copy=True,
+            bounds_error=False,
+            fill_value='extrapolate')(np.log10(e)))
+
+    def syst_magic_interpolated_up_function(e):
+        return(10.0**interpolate.interp1d(
+            np.log10(syst_magic_en_up), np.log10(syst_magic_sed_up),
+            kind='linear',
+            copy=True,
+            bounds_error=False,
+            fill_value='extrapolate')(np.log10(e)))
+
+    def magic_syst_error(e):
+        return(syst_magic_interpolated_up_function(e) -
+               syst_magic_interpolated_down_function(e)) / 2.0
+    #########################################################################
+
     def fit_data(f, x_data, y_data, y_sigma, p0):
         popt, pcov = curve_fit(f, x_data, y_data, p0=p0, sigma=y_sigma,
                                absolute_sigma=True, check_finite=True)  # ,
@@ -215,72 +284,74 @@ if __name__ == '__main__':
         )
         return (popt, np.sqrt(np.diag(pcov)), chi_sq, ndof)
     #########################################################################
-    folder_full_cascade = "test54_primary_gamma_field_30000_eps_thr=1e+05eV_with_losses_below_threshold_7e+07---1e+14eV_photon_max=None"
-    energy_bins_fit_full_cascade = np.logspace(np.log10(7.0e+07), 14, 41)
-    primary_energy_bins_fit_full_cascade = np.logspace(np.log10(7.0e+07),
-                                                       14,
-                                                       41)
-    number_of_particles_full_cascade = 30_000
-    hist_precalc_full_cascade = make_sed_from_monte_carlo_cash_files(
-        folder_full_cascade,
-        energy_bins_fit_full_cascade,
-        primary_energy_bins=primary_energy_bins_fit_full_cascade,
-        cascade_type_of_particles='all',
-        original_spectrum=spec.power_law,
-        original_params=[1.0, 1.0, 1.0],
-        new_spectrum=None,
-        new_params=None,
-        original_keyargs={},
-        new_keyargs={},
-        reweight_array='primary',
-        number_of_particles=number_of_particles_full_cascade,
-        particles_of_interest='gamma',  # or 'electron'
-        density=False,
-        verbose=False,
-        output='histogram_2d_precalculated',
-        device='cpu'
-    )
-    gamma2 = 2.0
-
-    def model_sed_from_monte_carlo(
-        en_observable, gamma1, en_break, norm,
-        gamma2=gamma2,
-        energy_bins_mc=energy_bins_fit_full_cascade,
-        primary_energy_bins_mc=primary_energy_bins_fit_full_cascade,
-        redshift=z,
-        original_spectrum=spec.power_law,
-        original_params=[1.0, 1.0, 1.0],
-        number_of_particles=number_of_particles_full_cascade,
-        histogram_2d_precalculated=hist_precalc_full_cascade
-    ):
-        e, sed = make_SED(
-            None,
-            energy_bins_mc,
-            None,
-            primary_energy_bins=primary_energy_bins_mc,
-            original_spectrum=original_spectrum,
-            original_params=original_params,
-            new_spectrum=spec.broken_power_law,
-            new_params=[2.7, gamma2, en_break],
-            original_keyargs={},
-            new_keyargs={
-                'norm': norm
-            },
-            reweight_array='primary',
-            number_of_particles=number_of_particles,
-            density=False,
-            histogram_2d_precalculated=histogram_2d_precalculated)
-        sed[sed <= 0] = 1.0e-40
-        sed = spec.to_current_energy(en_observable * (1.0 + redshift),
-                                     e, sed)
-        sed = sed * np.exp(-ebl.tau_gilmore(en_observable * u.eV,
-                                            redshift))
-        sed = sed / (1.0 + redshift)  # AHNTUNG ATTENTION !!!
-        return sed
-
+    # folder_full_cascade = "test54_primary_gamma_field_30000_eps_thr=1e+05eV_with_losses_below_threshold_7e+07---1e+14eV_photon_max=None"
+    # energy_bins_fit_full_cascade = np.logspace(np.log10(7.0e+07), 14, 49)
+    # primary_energy_bins_fit_full_cascade = np.logspace(np.log10(7.0e+07),
+    #                                                    14,
+    #                                                    49)
+    # number_of_particles_full_cascade = 30_000
+    # hist_precalc_full_cascade = make_sed_from_monte_carlo_cash_files(
+    #     folder_full_cascade,
+    #     energy_bins_fit_full_cascade,
+    #     primary_energy_bins=primary_energy_bins_fit_full_cascade,
+    #     cascade_type_of_particles='all',
+    #     original_spectrum=spec.power_law,
+    #     original_params=[1.0, 1.0, 1.0],
+    #     new_spectrum=None,
+    #     new_params=None,
+    #     original_keyargs={},
+    #     new_keyargs={},
+    #     reweight_array='primary',
+    #     number_of_particles=number_of_particles_full_cascade,
+    #     particles_of_interest='gamma',  # or 'electron'
+    #     density=False,
+    #     verbose=False,
+    #     output='histogram_2d_precalculated',
+    #     device='cpu'
+    # )
+    # gamma2 = 2.7
+    # en_break = 1.0e+13  # eV
+    #
+    # def model_sed_from_monte_carlo(
+    #     en_observable, gamma1, norm,
+    #     gamma2=gamma2,
+    #     en_break=en_break,
+    #     energy_bins_mc=energy_bins_fit_full_cascade,
+    #     primary_energy_bins_mc=primary_energy_bins_fit_full_cascade,
+    #     redshift=z,
+    #     original_spectrum=spec.power_law,
+    #     original_params=[1.0, 1.0, 1.0],
+    #     number_of_particles=number_of_particles_full_cascade,
+    #     histogram_2d_precalculated=hist_precalc_full_cascade
+    # ):
+    #     e, sed = make_SED(
+    #         None,
+    #         energy_bins_mc,
+    #         None,
+    #         primary_energy_bins=primary_energy_bins_mc,
+    #         original_spectrum=original_spectrum,
+    #         original_params=original_params,
+    #         new_spectrum=spec.broken_power_law,
+    #         new_params=[gamma1, gamma2, en_break],
+    #         original_keyargs={},
+    #         new_keyargs={
+    #             'norm': norm
+    #         },
+    #         reweight_array='primary',
+    #         number_of_particles=number_of_particles,
+    #         density=False,
+    #         histogram_2d_precalculated=histogram_2d_precalculated)
+    #     sed[sed <= 0] = 1.0e-40
+    #     sed = spec.to_current_energy(en_observable * (1.0 + redshift),
+    #                                  e, sed)
+    #     sed = sed * np.exp(-ebl.tau_gilmore(en_observable * u.eV,
+    #                                         redshift))
+    #     sed = sed / (1.0 + redshift)  # AHNTUNG ATTENTION !!!
+    #     return sed
     #########################################################################
 
-    def fit_data_with_monte_carlo(f, x_data, y_data, y_sigma, p0):
+    def fit_data_with_monte_carlo(f, x_data, y_data, y_sigma, p0,
+                                  number_of_hidden_parameters=0):
         popt, pcov = curve_fit(f, x_data, y_data,
                                p0=p0, sigma=y_sigma,
                                absolute_sigma=True,
@@ -295,7 +366,8 @@ if __name__ == '__main__':
         # calculate chi^2
         data_predicted_from_fit = f(x_data, *popt)
         chi_sq = np.sum((y_data - data_predicted_from_fit)**2 / y_sigma**2)
-        ndof = (y_data.shape[0] - len(popt) - 1)
+        ndof = (y_data.shape[0] - len(popt) - 1) - \
+            number_of_hidden_parameters
         print('ndof = {:d}'.format(ndof))
         print("chi_sq / n.d.o.f. = {:f}".format(
             chi_sq /
@@ -303,39 +375,41 @@ if __name__ == '__main__':
         )
         return (popt, np.sqrt(np.diag(pcov)), chi_sq, ndof)
     ########################################################################
-    x_data = np.concatenate([data_en_fermi], axis=0)
-    y_data = np.concatenate([data_sed_fermi], axis=0)
-    y_sigma = np.concatenate([yerr_fermi[0]], axis=0)
-    # y_sigma = np.ones(y_sigma.shape) * np.max(y_sigma) * 30
+    x_data = np.concatenate([data_en_fermi, data_en_magic], axis=0)
+    y_data = np.concatenate([data_sed_fermi, data_sed_magic], axis=0)
+    y_sigma = np.concatenate([(yerr_fermi[0] + yerr_fermi[1]) / 2.0,
+                              (yerr_magic[0]**2 +
+                               (magic_syst_error(data_en_magic))**2)**0.5],
+                             axis=0)
     en_observable = np.logspace(np.log10(e_min_value),
                                 np.log10(e_max_value),
                                 100)
     ########################################################################
-    p0 = [2.7, 1.0e+12, 5.97805273e-23]
-    popt, perr, chisq, ndof = fit_data_with_monte_carlo(
-        model_sed_from_monte_carlo,
-        x_data, y_data, y_sigma,
-        p0)
-    print("popt = ", popt)
-    sed_mc_full_cascade = model_sed_from_monte_carlo(en_observable, *popt)
-    e_mc_raw_full_cascade, sed_mc_raw_full_cascade = make_SED(
-        None,
-        energy_bins_fit_full_cascade,
-        None,
-        primary_energy_bins=primary_energy_bins_fit_full_cascade,
-        original_spectrum=spec.power_law,
-        original_params=[1.0, 1.0, 1.0],
-        new_spectrum=spec.broken_power_law,
-        new_params=[2.7, gamma2, popt[1]],
-        original_keyargs={},
-        new_keyargs={
-            'norm': popt[2]
-        },
-        reweight_array='primary',
-        number_of_particles=number_of_particles_full_cascade,
-        density=False,
-        histogram_2d_precalculated=hist_precalc_full_cascade
-    )
+    # p0 = [2.666, 5.97805273e-26]
+    # popt, perr, chisq, ndof = fit_data_with_monte_carlo(
+    #     model_sed_from_monte_carlo,
+    #     x_data, y_data, y_sigma,
+    #     p0)
+    # print("popt = ", popt)
+    # sed_mc_full_cascade = model_sed_from_monte_carlo(en_observable, *popt)
+    # e_mc_raw_full_cascade, sed_mc_raw_full_cascade = make_SED(
+    #     None,
+    #     energy_bins_fit_full_cascade,
+    #     None,
+    #     primary_energy_bins=primary_energy_bins_fit_full_cascade,
+    #     original_spectrum=spec.power_law,
+    #     original_params=[1.0, 1.0, 1.0],
+    #     new_spectrum=spec.broken_power_law,
+    #     new_params=[popt[0], gamma2, en_break],
+    #     original_keyargs={},
+    #     new_keyargs={
+    #         'norm': popt[1]
+    #     },
+    #     reweight_array='primary',
+    #     number_of_particles=number_of_particles_full_cascade,
+    #     density=False,
+    #     histogram_2d_precalculated=hist_precalc_full_cascade
+    # )
     ########################################################################
     p0_null_model = [2.7, 0.07, 1.62e-19, 1.110844e+17]
     popt_null_model, perr_null_model, chisq_null_model, ndof_null_model = fit_data(
@@ -369,7 +443,7 @@ if __name__ == '__main__':
     # )
     ########################################################################
     folder_hybrid = "test47_primary_electron_field_30000_eps_thr=1e+05eV_with_losses_below_threshold_7e+07---1e+14eV_photon_max=None"
-    energy_bins_fit_hybrid = np.logspace(8, 14, 36)
+    energy_bins_fit_hybrid = np.logspace(8, 14, 49)
     primary_energy_bins_fit_hybrid = np.logspace(np.log10(5e+12),
                                                  np.log10(3e+13),
                                                  11)
@@ -456,7 +530,8 @@ if __name__ == '__main__':
     popt_hybrid, perr_hybrid, chisq_hybrid, ndof_hybrid = fit_data_with_monte_carlo(
         model_sed_from_monte_carlo_hybrid,
         x_data, y_data, y_sigma,
-        p0_hybrid)
+        p0_hybrid,
+        number_of_hidden_parameters=len(popt_null_model) - 1)
     print("popt_hybrid = ", popt_hybrid)
     sed_hybrid = model_sed_from_monte_carlo_hybrid(en_observable,
                                                    *popt_hybrid)
@@ -557,8 +632,8 @@ if __name__ == '__main__':
                                      *popt_null_model[:-1]) *
                              en_source_null_model**2)
     ########################################################################
-    p_value = stats.chi2.sf(chisq, df=ndof)
-    significance = spec.get_significance_2_tailed(p_value)
+    # p_value = stats.chi2.sf(chisq, df=ndof)
+    # significance = spec.get_significance_2_tailed(p_value)
     p_value_null_model = stats.chi2.sf(chisq_null_model, df=ndof_null_model)
     significance_null_model = spec.get_significance_2_tailed(
         p_value_null_model
@@ -567,6 +642,143 @@ if __name__ == '__main__':
     significance_hybrid = spec.get_significance_2_tailed(
         p_value_hybrid
     )
+    ########################################################################
+    ############### Gamma rays from p-p interactions #######################
+    proton_energy = np.logspace(13.5, 14.77, 100) * u.eV
+    proton_spectrum = spec.power_law(
+        proton_energy,
+        2.0,
+        norm=7.0 * popt_hybrid[0] * u.eV**(-1) * u.s**(-1) * u.cm**(-2),
+        en_ref=en_ref * u.eV)
+    proton_column_density = 1.0e+23 * u.cm**(-2)
+    proton_tau = (proton_column_density *
+                  sigma_pp_inelastic_cross_section(proton_energy))
+    proton_spectrum_interacted = proton_spectrum * (1.0 -
+                                                    np.exp(-proton_tau))
+    gamma_from_protons_energy = np.logspace(10, 14, 100) * u.eV
+    gamma_from_protons_spectrum = (np.array(list(map(
+        lambda z: simps(F_gamma_approx(z.value,
+                                       proton_energy.value) *
+                        proton_spectrum_interacted.value,
+                        proton_energy.value),
+        gamma_from_protons_energy))) *
+        F_gamma_approx(gamma_from_protons_energy,
+                       proton_energy[0]).unit *
+        proton_spectrum[0].unit *
+        proton_energy[0].unit)
+    ########################################################################
+    f_aux_gamma_from_protons_spectrum = interpolate.interp1d(
+        np.log10(gamma_from_protons_energy.value),
+        np.log10(gamma_from_protons_spectrum.value),
+        kind='linear',
+        bounds_error=False,
+        fill_value='extrapolate'
+    )
+
+    def gamma_from_protons_spectrum_interpolated(energy, c):
+        return(10.0**(f_aux_gamma_from_protons_spectrum(np.log10(
+            energy
+        ))) * c)
+
+    def model_sed_from_monte_carlo_hybrid_gamma_from_protons(
+        en_observable,
+        norm_gamma_from_protons,
+        alpha_null=2.725828e+00,
+        beta_null=7.977361e-02,
+        norm_null=2.544626e-19,
+        en_ref=en_ref,
+        energy_bins_mc=energy_bins_fit_hybrid,
+        primary_energy_bins_mc=primary_energy_bins_fit_hybrid,
+        redshift=z,
+        original_spectrum=spec.power_law,
+        original_params=[1.0, 1.0, 1.0],
+        number_of_particles=number_of_particles_hybrid,
+        histogram_2d_precalculated=hist_precalc_hybrid_gamma
+    ):
+        e_cascade, sed_cascade = make_SED(
+            None,
+            energy_bins_mc,
+            None,
+            primary_energy_bins=primary_energy_bins_mc,
+            original_spectrum=original_spectrum,
+            original_params=original_params,
+            new_spectrum=gamma_from_protons_spectrum_interpolated,
+            new_params=[norm_gamma_from_protons, ],
+            original_keyargs={},
+            new_keyargs={},
+            reweight_array='primary',
+            number_of_particles=number_of_particles,
+            density=False,
+            histogram_2d_precalculated=histogram_2d_precalculated,
+            old=False
+        )
+        sed_cascade[sed_cascade <= 0] = 1.0e-40
+        en_source = en_observable * (1.0 + redshift)
+        sed_cascade = spec.to_current_energy(
+            en_source,
+            e_cascade, sed_cascade
+        )
+        ###################################################################
+        sed_null = en_source**2 * my_spec(en_source,
+                                          alpha_null, beta_null, norm_null)
+        ####################################################################
+        sed = sed_cascade + sed_null
+        sed = sed * np.exp(-ebl.tau_gilmore(en_observable * u.eV,
+                                            redshift))
+        sed = sed / (1.0 + redshift)  # AHNTUNG ATTENTION !!!
+        return sed
+    ########################################################################
+    p0_hybrid_gamma_from_protons = [1.0, ]
+    popt_hybrid_gamma_from_protons, perr_hybrid_gamma_from_protons, chisq_hybrid_gamma_from_protons, ndof_hybrid_gamma_from_protons = fit_data_with_monte_carlo(
+        model_sed_from_monte_carlo_hybrid_gamma_from_protons,
+        x_data, y_data, y_sigma,
+        p0_hybrid_gamma_from_protons,
+        number_of_hidden_parameters=len(popt_null_model) - 1)
+    print("popt_hybrid_gamma_from_protons = ",
+          popt_hybrid_gamma_from_protons)
+    sed_hybrid_gamma_from_protons = model_sed_from_monte_carlo_hybrid_gamma_from_protons(
+        en_observable,
+        *p0_hybrid_gamma_from_protons)
+    gamma_from_protons_sed = (gamma_from_protons_spectrum *
+                              gamma_from_protons_energy**2 *
+                              popt_hybrid_gamma_from_protons[0])
+    ########################################################################
+    p_value_hybrid_gamma_from_protons = stats.chi2.sf(
+        chisq_hybrid_gamma_from_protons,
+        df=ndof_hybrid_gamma_from_protons
+    )
+    significance_hybrid_gamma_from_protons = spec.get_significance_2_tailed(
+        p_value_hybrid_gamma_from_protons
+    )
+    ########################################################################
+    e_all_mc_gamma_from_protons, sed_all_mc_gamma_from_protons = make_sed_from_monte_carlo_cash_files(
+        folder_hybrid_gamma,
+        energy_bins_fit_hybrid,  # array-like
+        primary_energy_bins=primary_energy_bins_fit_hybrid,
+        cascade_type_of_particles='all',
+        original_spectrum=spec.power_law,
+        original_params=[1.0, 1.0, 1.0],
+        new_spectrum=gamma_from_protons_spectrum_interpolated,
+        new_params=[popt_hybrid_gamma_from_protons[0], ],
+        original_keyargs={},
+        new_keyargs={},
+        reweight_array='primary',
+        number_of_particles=number_of_particles_hybrid,
+        particles_of_interest='gamma',  # or 'electron'
+        density=False,
+        verbose=False,
+        output='sed',
+        device='cpu'
+    )
+    e_all_mc_gamma_from_protons_observable = (e_all_mc_gamma_from_protons /
+                                              (1.0 + z))
+    sed_all_mc_gamma_from_protons_observable = (
+        sed_all_mc_gamma_from_protons /
+        (1.0 + z) *
+        np.exp(-ebl.tau_gilmore(
+            e_all_mc_gamma_from_protons_observable * u.eV,
+            z)
+        ))
     ########################################################################
     # fig = plt.figure(figsize=(8, 6))
     # ax = fig.add_subplot(1, 1, 1)
@@ -595,16 +807,60 @@ if __name__ == '__main__':
     )
 
     plt.plot(
-        en_observable, sed_mc_full_cascade,
+        gamma_from_protons_energy, gamma_from_protons_sed,
+        marker=None,
+        linestyle=':',
+        linewidth=3,
+        color='brown',
+        zorder=2,
+        label='Gamma rays from pp (primary for electromagnetic cascade, source frame)'
+    )
+
+    plt.plot(
+        en_observable, sed_hybrid_gamma_from_protons,
         marker=None,
         linestyle='--',
         linewidth=3,
-        zorder=7,
-        label='Monte-Carlo test54; full-cascade model\nprimary gamma rays; Earth frame; significance = {:.2f} sigma'.format(
-            significance
-        ),
-        color='m'
+        color='brown',
+        zorder=2,
+        label='Monte-Carlo test 54; hybrid with gamma rays from pp-interactions: sum; Earth frame\n significance = {:.2f}'.format(
+            significance_hybrid_gamma_from_protons
+        )
     )
+
+    plt.plot(
+        e_all_mc_gamma_from_protons_observable,
+        sed_all_mc_gamma_from_protons_observable,
+        marker=None,
+        linestyle='-',
+        linewidth=3,
+        color='olive',
+        zorder=5,
+        label='Monte-Carlo test 54; hybrid with gamma rays from pp-interactions: cascade component; Earth frame'
+    )
+
+    plt.plot(
+        e_all_mc_gamma_from_protons,
+        sed_all_mc_gamma_from_protons,
+        marker=None,
+        linestyle='-.',
+        linewidth=3,
+        color='olive',
+        zorder=5,
+        label='Monte-Carlo test 54; hybrid with gamma rays from pp-interactions: cascade component; source frame'
+    )
+
+    # plt.plot(
+    #     en_observable, sed_mc_full_cascade,
+    #     marker=None,
+    #     linestyle='--',
+    #     linewidth=3,
+    #     zorder=7,
+    #     label='Monte-Carlo test54; full-cascade model\nprimary gamma rays; Earth frame; significance = {:.2f} sigma'.format(
+    #         significance
+    #     ),
+    #     color='m'
+    # )
 
     plt.plot(
         en_observable, sed_hybrid,
@@ -689,6 +945,29 @@ if __name__ == '__main__':
                  capsize=1, barsabove=False, markersize=5,
                  errorevery=1, capthick=1, color='orange', zorder=100.0,
                  label='MAGIC')
+
+    plt.plot(syst_magic_en_up, syst_magic_sed_up,
+             marker=None,
+             linewidth=3,
+             color='orange',
+             alpha=1.0,
+             linestyle='-')
+
+    plt.fill_between(
+        syst_magic_en_common,
+        syst_magic_interpolated_down_function(syst_magic_en_common),
+        syst_magic_interpolated_up_function(syst_magic_en_common),
+        alpha=0.37,
+        color='orange'
+    )
+
+    plt.plot(syst_magic_en_down, syst_magic_sed_down,
+             marker=None,
+             linewidth=3,
+             color='orange',
+             alpha=1.0,
+             linestyle='-')
+
     plt.xlabel('energy, ' + 'eV', fontsize=18)
     plt.xticks(fontsize=13)
     plt.ylabel('SED, ' + r'eV cm$^{-2}$s$^{-1}$', fontsize=18)
@@ -698,7 +977,7 @@ if __name__ == '__main__':
     # ax.xaxis.set_major_locator(ticker.LogLocator(
     #     base=10.0, numticks=22, subs=[1, 2, 3, 4, 5, 6, 7, 8, 9]))
     # ax.set_xlim(1.0e+08, 1.0e+12)
-    ax.set_ylim(1.0e-01, 1.0e+03)
+    ax.set_ylim(1.0e-01, 1.0e+04)
     # ax.grid()
     # ax.grid()
     # fig.savefig('test_figures/exponential_cutoff_compare_with_Derishev_fig4a.pdf')
@@ -708,7 +987,7 @@ if __name__ == '__main__':
     elapsed_time_ms = start_event.elapsed_time(end_event)
     print(elapsed_time_ms)
     ######################################################################
-    plt.legend(fontsize=13, loc='upper right')
+    plt.legend(fontsize=12, loc='upper right')
     # plt.legend(loc='upper left')
     plt.show()
     #####################################################################
