@@ -7,8 +7,7 @@
 
 #define ELECTRON_REST_ENERGY 5.1100e+05 // eV
 #define THOMSON_CROSS_SECTION 6.6524e-25 // cm^2
-#define CM_TO_EV  5.068e+04
-#define SIZE_PHOTON_FIELD 1000
+#define SIZE_PHOTON_FIELD 6852 // 2000
 #define SIZE_ENERGY 100
 //
 //
@@ -162,7 +161,7 @@ double gamma_gamma_rate(double E)
         }
     }
     double s_max = 4.0*E*eps_max;
-    const unsigned int n_int = 1000;
+    const unsigned int n_int = 10000;
     double a_s = log10(s_max/s_min) / (double) n_int;
     double s[n_int];
     for (int l = 0; l < n_int; l++)

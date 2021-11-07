@@ -23,14 +23,14 @@ S_MIN = (2.0 * ELECTRON_REST_ENERGY)**2
 print('Hey!')
 device = 'cuda'
 # if False:
-# if torch.cuda.is_available():
-#     print("If cuda is available: ", torch.cuda.is_available())
-#     device = 'cuda'
-#     print("Using 'cuda'!!!")
-#     print(torch.cuda.get_device_name())
-# else:
-#     device = 'cpu'
-#     print("Using CPU!!!")
+if torch.cuda.is_available():
+    print("If cuda is available: ", torch.cuda.is_available())
+    device = 'cuda'
+    print("Using 'cuda'!!!")
+    print(torch.cuda.get_device_name())
+else:
+    device = 'cpu'
+    print("Using CPU!!!")
 ########################################################################
 # #0 Precalculate gamma-gamma interaction rate
 # r_blr = ((0.036 * u.pc).to(u.cm)).value  # BLR radius in cm
@@ -704,7 +704,7 @@ def make_SED(
             density=density
         )
     else:
-        histogram_2d = histogram_2d_precalculated
+        histogram_2d = np.copy(histogram_2d_precalculated)
     primary_energy_center = center_energy(primary_energy_bins)
     another_energy_center = center_energy(energy_bins)
     spectrum = reweight_2d_histogram(
@@ -974,6 +974,15 @@ def monte_carlo_process(
              primary_energy_max]) * u.eV * 1.10,
         background_photon_energy_unit=background_photon_energy_unit,
         background_photon_density_unit=background_photon_density_unit)
+    save_table = spec.create_2column_table(
+        e_gamma_node,
+        r_gamma_node
+    )
+    # np.savetxt(
+    #     "/home/raylend/Science/agnprocesses/processes/EBL_models/Gimore2012_gamma-gamma_int_rate_z=0.015_final.txt",
+    #     save_table,
+    #     fmt="%.6e"
+    # )
     e_ic_node, r_ic_node = ic.IC_interaction_rate(
         photon_field_file_path,
         min([observable_energy_min,
@@ -999,7 +1008,7 @@ def monte_carlo_process(
                              dtype=torch.float64)
     ######################################################################
     nstep = 0
-    while (len(gammas) > 0) or (len(electrons) > 0):
+    while (len(gammas[1, :]) > 0) or (len(electrons[1, :]) > 0):
         print(f"Step number {nstep}:")
         # Sample the distance traveled
         if no_gammas == False:
@@ -1230,18 +1239,18 @@ def monte_carlo_process(
             ))
         print("\n")
         nstep += 1
-        if (nstep > terminator_step_number):
+        if (nstep >= terminator_step_number):
             break
         if no_electrons == True and no_gammas == True:
             break
     print("Done!")
     print('Monte-Carlo process finished: ', date_time_string_human_friendly())
     t_stop = get_current_date_time()
-    print("Total time of calculations: {:d}".format(
-        (
-            t_stop - t_start
-        ))
-    )
+    print("Total time of calculations: ",
+          (
+              t_stop - t_start
+          )
+          )
     return None
 
 

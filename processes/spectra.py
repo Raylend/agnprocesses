@@ -7,6 +7,7 @@ from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
 from scipy import interpolate
+from scipy import stats
 import torch
 
 
@@ -35,7 +36,7 @@ def broken_power_law(en, gamma1, gamma2, en_break, norm=1.0 * u.eV**(-1)):
     return f
 
 
-def log_parabola(en, alpha, beta, en_ref=1.0 * u.eV, norm=1.0 * u.eV**(-1)):
+def log_parabola(en, alpha, beta, norm=1.0 * u.eV**(-1), en_ref=1.0 * u.eV):
     try:
         x = (en / en_ref).to(u.dimensionless_unscaled)
     except AttributeError:
@@ -68,6 +69,26 @@ def exponential_cutoff(en,
         f = norm * (en / en_ref)**(-gamma) * np.exp(-en / en_cutoff)
     except TypeError:
         f = norm * (en / en_ref)**(-gamma) * torch.exp(-en / en_cutoff)
+    try:
+        f = f.to(norm.unit)
+    except AttributeError:
+        pass
+    return f
+
+
+def berezinsky_kalashev_universal_cascade_spectrum(
+    en,
+    gamma1,
+    gamma2,
+    en_x,
+    eps,
+    en_cutoff,
+    norm=1.0 * u.eV**(-1),
+    en_ref=1.0 * u.eV
+):
+    f = (norm * ((en / en_ref).to(u.dimensionless_unscaled))**(-gamma1) *
+         (1.0 + ((en / en_x).to(u.dimensionless_unscaled))**eps)**(-(gamma2 - gamma1) / eps) *
+         np.exp(-(en / en_cutoff).to(u.dimensionless_unscaled)))
     try:
         f = f.to(norm.unit)
     except AttributeError:
@@ -230,7 +251,8 @@ def create_2column_table(col1, col2):
     return table
 
 
-def to_current_energy(e, e1, s1):
+def to_current_energy(e, e1, s1,
+                      bounds_error=None):
     """
     Interpolates s1 to points of e array given that s1 corresponds to
     the points of e1. E.g., SED s1 corresponds to energy bins e1, but you want
@@ -248,14 +270,14 @@ def to_current_energy(e, e1, s1):
 
     Final energy and function have units of e and s1 correspondingly.
     """
-    ###########################################################################
+    ########################################################################
     try:
         if e1.shape[0] != s1.shape[0]:
             raise ValueError("sizes of e1 and s1 must be equal!")
     except AttributeError:
         raise AttributeError(
             "e1, s1, e must be numpy arrays or array-like!")
-    ###########################################################################
+    ########################################################################
     x_u = None
     y_u = None
     try:
@@ -276,20 +298,38 @@ def to_current_energy(e, e1, s1):
         s1 = s1.value
     except AttributeError:
         pass
-    ###########################################################################
+    ########################################################################
     logx1 = np.log10(e1)
     logy1 = np.log10(s1)
-    f1 = interpolate.interp1d(logx1, logy1,
-                              kind='linear',
-                              bounds_error=False,
-                              fill_value=(-40, -40))
+    if bounds_error == "extrapolate":
+        f1 = interpolate.interp1d(logx1, logy1,
+                                  kind='linear',
+                                  bounds_error=bounds_error)
+    else:
+        f1 = interpolate.interp1d(logx1, logy1,
+                                  kind='linear',
+                                  bounds_error=False,
+                                  fill_value=(-40, -40))
     x = np.log10(e)
     s = (10.0**(f1(x)))  # new interpolated function values
-    ###########################################################################
+    ########################################################################
     if y_u is not None:
         s = s * y_u
 
     return(s)
+
+
+def get_significance_2_tailed(p_value):
+    shift = 0.000001
+    x = np.linspace(0.0 - shift, 0.0 + shift, 100)
+    y = stats.norm.pdf(x)
+    resid = 1.0 - simps(y, x)
+    while resid > p_value:
+        shift = shift * 1.001
+        x = np.linspace(0.0 - shift, 0.0 + shift, 100)
+        y = stats.norm.pdf(x)
+        resid = 1.0 - simps(y, x)
+    return(shift)
 
 
 def test():
