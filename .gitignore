@@ -10,12 +10,10 @@ processes/c_codes/PhotoHadron/output/*
 *.pyc
 *.o
 *.so
-processes/logs/*
 processes/c_codes/BHPairProduction/input/*
 processes/c_codes/BHPairProduction/output/*
 processes/c_codes/GammaGammaPairProduction/input/*
 processes/c_codes/GammaGammaPairProduction/output/*
-processes/c_codes/GammaGammaInteractionRate/output/*
 processes/c_codes/InverseComptonInteractionRate/input/*
 processes/c_codes/InverseComptonInteractionRate/output/*
 *.npy
