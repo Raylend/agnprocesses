@@ -268,3 +268,7 @@ agnenv
 
 # temporary binary files
 processes/c_codes/BHPairProduction/bin
+
+# temporary .txt files
+src/extensions/InverseComptonInteractionRate/output/*.txt
+src/extensions/InverseComptonInteractionRate/input/*.txt
