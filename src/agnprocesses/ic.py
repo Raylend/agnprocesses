@@ -1,12 +1,22 @@
 """
-This program computes inverse Compton (IC) emission of reletivistic electron_spectrum following Jones (1968) Phys. Rev. 167, 5
+This program computes inverse Compton (IC) emission of relativistic electron_spectrum following Jones (1968) Phys. Rev. 167, 5.
+Inverse Compton interaction rate C extension was added based on paper
+M. Kachelrieß et al. // Computer Physics Communications 183 (2012) 1036–1043
 """
 from astropy import units as u
 from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
+import matplotlib.pyplot as plt
+import subprocess  # to run prompt scripts from python
+import warnings
+import agnprocesses.ext.icir
+import agnprocesses.spectra as spec
 
-from . import spectra as spec
+
+def test():
+    print("ic.py imported successfully.")
+    return None
 
 
 def inverse_compton_base(alpha, g, alpha1):
@@ -62,7 +72,7 @@ def inverse_compton_over_photon_field(alpha,
     background_photon_density_unit parameter.
     """
     list_of_energies = ['J', 'erg', 'eV', 'keV', 'MeV', 'GeV', 'TeV', 'PeV']
-    ###########################################################################
+    #########################################################################
     if type(field) == type(''):
         try:
             field = np.loadtxt(field)
@@ -77,16 +87,18 @@ def inverse_compton_over_photon_field(alpha,
     else:
         raise ValueError(
             "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
-    ###########################################################################
+    #########################################################################
     particle_mass = particle_mass.to(u.g, u.mass_energy())
     r0 = particle_charge**2 / (particle_mass * (const.c.cgs)**2)
     rest_energy = particle_mass.to(u.eV, u.mass_energy())
     try:
         a_un = alpha.unit
     except:
+        warnings.warn("'alpha' is not an astropy Quantity with energy unit!\nIt is interpreted as in units of electron rest energy!\nMake sure you did not miss energy unit for 'alpha' argument!",
+                      UserWarning)
         a_un = ''
     k = np.pi * r0 * r0 * const.c.cgs
-    ###########################################################################
+    #########################################################################
     if type(energy) == type(3.0) or type(energy) == type(1) \
             or type(energy) == type(np.arange(0, 3)):
         g = energy
@@ -96,7 +108,7 @@ def inverse_compton_over_photon_field(alpha,
         g = (energy / rest_energy).decompose().value
     else:
         raise ValueError("invalid type of the argument 'energy'")
-    ############################################################################
+    #########################################################################
     if type(eps) == type(3.0) or type(eps) == type(1) \
             or type(eps) == type(np.arange(0, 3)):
         pass
@@ -107,7 +119,7 @@ def inverse_compton_over_photon_field(alpha,
     else:
         raise ValueError(
             "invalid type of the argument 'eps' (first column of 'field')")
-    ############################################################################
+    ########################################################################
     if type(alpha) == type(3.0) or type(alpha) == type(1) \
             or type(alpha) == type(np.arange(0, 3)):
         pass
@@ -117,7 +129,7 @@ def inverse_compton_over_photon_field(alpha,
         alpha = (alpha / rest_energy).decompose().value
     else:
         raise ValueError("invalid type of the argument 'alpha'")
-    ############################################################################
+    #########################################################################
     if len(eps) < 1:
         raise ValueError(
             "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy & density).")
@@ -178,7 +190,11 @@ def inverse_compton_spec(
     norm is the normalization coefficient of charged particles
 
     spec_law must be 'power_law', 'broken_power_law',
-    'exponential_cutoff' or 'monoenergetic'
+    'exponential_cutoff', 'monoenergetic' or 'user'
+
+    'user' mode is for the electron spectrum defined by user created table
+    with, e.g. spec.create_2column_table(electron_energy, electron_spectrum).
+    In 'user' mode user_en_unit and user_spec_unit must be defined as well.
 
     gamma1 is the spectral index for the 'power_law' or the first spectral index
     for the 'broken_power_law' or the spectral index for the 'exponential_cutoff'
@@ -199,12 +215,15 @@ def inverse_compton_spec(
     nd.arrays (in the latter case they will be considered as Lorentz factors)
 
     field is the string with the path to the photon field .txt file OR numpy
-    array with 2 colums: the first column is the background photon energy, the
+    array with 2 colums:
+    the first column is the background photon energy, the
     second columnn is the background photon density. Units in the table must
     correspond to the background_photon_energy_unit parameter and the
     background_photon_density_unit parameter.
+
+    Returns IC-upscattered gamma-ray spectrum.
     """
-    ############################################################################
+    #########################################################################
     valid_spec_laws = ['power_law', 'broken_power_law',
                        'exponential_cutoff', 'monoenergetic',
                        'user']
@@ -212,7 +231,7 @@ def inverse_compton_spec(
         raise ValueError("Invalid spec_law. It must be one of {}"
                          .format(valid_spec_laws))
     f = None
-    ############################################################################
+    #########################################################################
     if spec_law == 'monoenergetic':
         par_list = [norm, en_mono]
         if all(el is not None for el in par_list):
@@ -227,7 +246,7 @@ def inverse_compton_spec(
             raise ValueError(
                 "en_mono should be an astropy Quantity, e.g. 5*u.GeV"
             )
-    ############################################################################
+    #########################################################################
     elif spec_law == 'broken_power_law':
         par_list = [gamma1, gamma2, en_break, en_min, en_max, norm]
         if all(el is not None for el in par_list):
@@ -273,7 +292,7 @@ def inverse_compton_spec(
                 "Make sure you defined all of gamma1, gamma2,\
              en_break, en_min, en_max, norm correctly"
             )
-    ###########################################################################
+    #########################################################################
     elif spec_law == 'power_law':
         par_list = [gamma1, en_ref, en_min, en_max, norm]
         if all(el is not None for el in par_list):
@@ -318,7 +337,7 @@ def inverse_compton_spec(
             raise ValueError(
                 "Make sure you defined all of gamma, en_ref, en_min, en_max, norm correctly"
             )
-    ###########################################################################
+    #########################################################################
     elif spec_law == 'exponential_cutoff':
         par_list = [gamma1, en_cutoff, en_min, en_max, norm, en_ref]
         if all(el is not None for el in par_list):
@@ -363,7 +382,7 @@ def inverse_compton_spec(
                 "Make sure you defined all of gamma1, en_cutoff, en_min, \
                 en_max, norm, en_ref correctly"
             )
-    ###########################################################################
+    #########################################################################
     elif spec_law == 'user':
         par_list = [electron_table, user_en_unit, user_spec_unit]
         if all(el is not None for el in par_list):
@@ -422,7 +441,7 @@ def inverse_compton_spec(
             raise ValueError(
                 "Make sure you defined all of electron_table, user_en_unit, user_spec_unit correctly"
             )
-    ###########################################################################
+    #########################################################################
     else:
         raise ValueError(
             f"Unknown charged particle spectrum type. The valid ones are: {valid_spec_laws}")
@@ -430,51 +449,80 @@ def inverse_compton_spec(
     return f
 
 
-if __name__ == '__main__':
-    eps = np.logspace(-10, -2, 1000) * u.eV
-    eps = eps.reshape(eps.shape[0], 1)
-    T = 2.7 * u.K
-    dens = spec.greybody_spectrum(eps,
-                                  T,
-                                  dilution=1.0)
-    field = np.concatenate((eps.value, dens.value), axis=1)
-    np.savetxt(
-        'processes/c_codes/PhotoHadron/input/plank_CMB_for_Kelner.txt',
+def IC_interaction_rate(
         field,
-        fmt='%1.6e')
-    ###########################################################################
-    ############################################################################
-    # fig = plt.figure(figsize=(8, 6))
-    # ax = fig.add_subplot(1, 1, 1)
-    #
-    # plt.plot(
-    #     alpha, s,
-    #     marker=None,
-    #     linewidth=3,
-    #     # color = 'g',
-    #     label='Egor python, Jones (1968)'
-    # )
-    # plt.plot(
-    #     scilab[:, 0], scilab[:, 1],
-    #     marker=None,
-    #     linewidth=3,
-    #     linestyle='--',
-    #     # color = 'b',
-    #     label='Egor scilab, Khangulian (2014)'
-    # )
-    # plt.xlabel('photon energy, ' + str(alpha.unit), fontsize=18)
-    # plt.xticks(fontsize=12)
-    # plt.ylabel('SED, arb.units', fontsize=18)
-    # plt.yticks(fontsize=12)
-    # plt.xscale("log")
-    # plt.yscale("log")
-    # # ax.set_xlim(1.0e+04, 1.0e+05)
-    # # ax.set_ylim(1.0e-09, 1.0e-07)
-    # # ax.grid()
-    # # ax.grid()
-    # plt.legend(loc='lower right')
-    # # fig.savefig(
-    # #     'test_figures/exponential_cutoff_compare_with_Derishev_fig4a.pdf'
-    # # )
-    #
-    # plt.show()
+        e_min,
+        e_max,
+        e_thr,
+        background_photon_energy_unit=u.eV,
+        background_photon_density_unit=(u.eV * u.cm**3)**(-1)
+):
+    """
+    field is the string with the path to the target photon field .txt file
+    OR numpy array with 2 columns: the first column is the background photon
+    energy, the second columnn is the background photon density.
+    Units in the field table must correspond to the
+    background_photon_energy_unit parameter and the
+    background_photon_density_unit parameter.
+    field should contain no more than 6852 strings (rows)!!!
+    (fix will be implemented in future)
+
+    e_min, e_max, e_thr are minimum, maximum and threshold electron energy.
+    They must be in astropy energy units.
+
+    Returns an tuple of 2 numpy columns: energy and interaction rate
+    """
+    try:
+        e_min = e_min.to(u.eV)
+    except:
+        raise ValueError("e_min must be an energy astropy Quantity!")
+    try:
+        e_max = e_max.to(u.eV)
+    except:
+        raise ValueError("e_max must be an energy astropy Quantity!")
+    try:
+        e_thr = e_thr.to(u.eV)
+    except:
+        raise ValueError("e_thr must be an energy astropy Quantity!")
+    if e_min < e_thr:
+        raise ValueError("e_min cannot be less than e_thr!")
+    if e_min > e_max:
+        raise ValueError("e_min cannot be greater than e_max!")
+    ########################################################################
+    try:
+        energy_coef = background_photon_energy_unit.to(u.eV) / (1.0 * u.eV)
+        dens_coef = background_photon_density_unit.to(
+            (u.eV * u.cm**3)**(-1)
+        ) / (u.eV * u.cm**3)**(-1)
+    except AttributeError:
+        raise AttributeError(
+            "Make sure that background_photon_energy_unit is in energy units, background_photon_density_unit is in [energy * volume]**(-1) units.")
+    ########################################################################
+    # background photon field
+    if type(field) == type(''):
+        try:
+            field = np.loadtxt(field)
+            field[:, 0] = field[:, 0] * energy_coef
+            field[:, 1] = field[:, 1] * dens_coef
+        except:
+            raise ValueError(
+                "Cannot read 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).\nTry to use an absolute path.")
+    elif type(field) == type(np.array(([2, 1], [5, 6]))):
+        field[:, 0] = field[:, 0] * energy_coef
+        field[:, 1] = field[:, 1] * dens_coef
+    else:
+        raise ValueError(
+            "Invalid value of 'field'! Make sure it is a numpy array \n with 2 columns or a string with the path to a .txt file with \n 2 columns (energy / density).")
+    if field[:, 0].shape[0] > 7000:
+        raise NotImplementedError(
+            "field should contain no more than 7000 strings (rows)! (more strings will be implemented in future)")
+    photon_path = 'src/extensions/InverseComptonInteractionRate/input/photon_field.txt'
+    np.savetxt(photon_path, field, fmt='%.6e')
+    ########################################################################
+    agnprocesses.ext.icir.icir(
+        photon_path, e_min.value, e_max.value, e_thr.value)
+    inter = np.loadtxt(
+        'src/extensions/InverseComptonInteractionRate/output/IC_interaction_rate.txt')
+    inter_e = inter[:, 0] * u.eV
+    inter_rate = inter[:, 1] * u.cm**(-1)
+    return (inter_e, inter_rate)

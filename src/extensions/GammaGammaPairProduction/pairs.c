@@ -9,7 +9,7 @@
 #define THOMSON_CROSS_SECTION 6.6524e-25 // cm^2
 #define SPEED_OF_LIGHT 2.998e+10 // cm/s
 #define CM_TO_EV  5.068e+04
-#define SIZE_PHOTON_FIELD 1000
+#define SIZE_PHOTON_FIELD 6852
 #define CONST_GAMMA_VHE 5000
 #define SIZE_ENERGY 30
 #define SMALLD 1.0e-40

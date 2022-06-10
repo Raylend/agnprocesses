@@ -40,17 +40,25 @@ pgamma_ext = Extension(
     **extension_kwargs,
 )
 
+ICIR_DIR = EXT_PATH / "InverseComptonInteractionRate"
+icir_ext = Extension(
+    "agnprocesses.ext.icir",
+    sources=[str(ICIR_DIR / "icir_ext.cpp")],
+    libraries=["InverseComptonInteractionRate"],
+    **extension_kwargs,
+)
+
 
 setup(
     name="agnprocesses",
-    version="0.2",
+    version="0.3",
     description="A toolbox for modelling processes in Active Galactic Nuclei",
-    author="Egor Podlesniy",
+    author="Egor Podlesniy, Timur Dzhatdoev, Igor Vaiman",
     author_email="podlesnyi.ei14@physics.msu.ru",
     license="GPLv3",
     package_dir={"": "src"},
     include_package_data=True,
     packages=["agnprocesses"],
-    ext_modules=[bh_ext, ggir_ext, ggpp_ext, pgamma_ext],
+    ext_modules=[bh_ext, ggir_ext, ggpp_ext, pgamma_ext, icir_ext],
     install_requires=['astropy', 'numpy', 'scipy'],
 )

@@ -1,4 +1,4 @@
-PHONY: bh_lib ggir_lib ggpp_lib install clean reinstall
+PHONY: bh_lib ggir_lib icir_lib ggpp_lib ph_lib install clean reinstall
 
 bh_lib:
 	cd src/extensions/BHPairProduction && make lib
@@ -12,8 +12,10 @@ ggpp_lib:
 ph_lib:
 	cd src/extensions/PhotoHadron && make lib
 
+icir_lib:
+	cd src/extensions/InverseComptonInteractionRate && make lib
 
-install: bh_lib ggir_lib ggpp_lib ph_lib
+install: bh_lib ggir_lib ggpp_lib ph_lib icir_lib
 	python setup.py install
 
 clean:
