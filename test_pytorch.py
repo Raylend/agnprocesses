@@ -1155,7 +1155,8 @@ def monte_carlo_process(
             not_lost = (electrons[1, :] > observable_energy_min)
             electrons = torch.stack([electrons[0, :][not_lost],
                                      electrons[1, :][not_lost],
-                                     electrons[2, :][not_lost]])
+                                     electrons[2, :][not_lost],
+                                     electrons[3, :][not_lost]])
             loss_fraction = (len(not_lost[not_lost == False]) /
                              len(not_lost))
             s_electrons = s_electrons[not_lost]
