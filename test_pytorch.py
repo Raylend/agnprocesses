@@ -513,14 +513,6 @@ def generate_random_s(energy,
                       **cosine_kwargs):
     if process == 'PP':
         energy_photon_min = S_MIN / (4.0 * energy) * 1.010
-        filt_less_than_zero = (energy_photon_min < 0.0)
-        if True in filt_less_than_zero:
-            print('energy_photon_min[filt_less_than_zero] = ',
-                  energy_photon_min[filt_less_than_zero])
-            print('energy[filt_less_than_zero] = ',
-                  energy[filt_less_than_zero])
-            raise RuntimeError(
-                "There is less than zero value in energy_photon_min!")
         epsilon = generate_random_background_photon_energy(
             energy.shape,
             photon_field_file_path,
@@ -918,8 +910,8 @@ def monte_carlo_process(
         electrons[3, :] = torch.clone(inj_coord)
     else:
         raise ValueError(
-            "Unknown option for the 'unjection_place' parameter!\n" +
-            "It must be either 'zero' or 'unifrom'!"
+            "Unknown option for the 'injection_place' parameter!\n" +
+            "It must be either 'zero' or 'uniform'!"
         )
     ######################################################################
     primary_energy_min = primary_energy_min.to(u.eV).value
@@ -1104,6 +1096,24 @@ def monte_carlo_process(
         ###################################################################
         # Generate s
         if no_gammas == False:
+            energy_photon_min = S_MIN / (4.0 * gammas[1, :]) * 1.010
+            filt_more_than_max = (energy_photon_min > energy_photon_max)
+            # remove sterile gamma rays
+            nless = len(filt_more_than_max[filt_more_than_max == True])
+            if nless > 0:
+                print(f"Removing {nless} gamma rays under the threshold")
+                torch.save(torch.stack([gammas[0, :][filt_more_than_max],
+                                        gammas[1, :][filt_more_than_max],
+                                        gammas[2, :][filt_more_than_max],
+                                        gammas[3, :][filt_more_than_max]]),
+                           folder + '/' + 'gammas_' +
+                           'step000' + str(nstep) +
+                           '_' + date_time_string_human_friendly() + '.pt')
+                filt_less_than_max = torch.logical_not(filt_more_than_max)
+                gammas = torch.stack([gammas[0, :][filt_less_than_max],
+                                      gammas[1, :][filt_less_than_max],
+                                      gammas[2, :][filt_less_than_max],
+                                      gammas[3, :][filt_less_than_max]])
             s_gammas = generate_random_s(
                 gammas[1, :],
                 photon_field_file_path,
@@ -1111,7 +1121,6 @@ def monte_carlo_process(
                 process='PP',
                 device=device,
                 energy_photon_max=energy_photon_max)
-            print("HERE GENERATES S_GAMMAS!!!")
             filt_s_gammas = (s_gammas >= S_MIN)
             print("There are {:d} gamma interactions under S_MIN".format(
                 (filt_s_gammas[filt_s_gammas == False]).shape[0])
