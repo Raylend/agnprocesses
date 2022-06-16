@@ -23,14 +23,14 @@ S_MIN = (2.0 * ELECTRON_REST_ENERGY)**2
 print('Hey!')
 # device = 'cpu'  # 'cuda'
 # # if False:
-if torch.cuda.is_available():
-    print("If cuda is available: ", torch.cuda.is_available())
-    device = 'cuda'
-    print("Using 'cuda'!!!")
-    print(torch.cuda.get_device_name())
-else:
-    device = 'cpu'
-    print("Using CPU!!!")
+# if torch.cuda.is_available():
+#     print("If cuda is available: ", torch.cuda.is_available())
+#     device = 'cuda'
+#     print("Using 'cuda'!!!")
+#     print(torch.cuda.get_device_name())
+# else:
+#     device = 'cpu'
+#     print("Using CPU!!!")
 ########################################################################
 # #0 Precalculate gamma-gamma interaction rate
 # r_blr = ((0.036 * u.pc).to(u.cm)).value  # BLR radius in cm
@@ -76,7 +76,7 @@ def torch_interpolation(x_new_tensor: torch.tensor,
 
 def background_photon_density_interpolated(energy_new,
                                            photon_field_file_path='',
-                                           device=device, dtype=torch.float64):
+                                           device=None, dtype=torch.float64):
     field = np.loadtxt(photon_field_file_path)
     energy_old = torch.tensor(field[:, 0],
                               device=device, dtype=torch.float64)
@@ -93,14 +93,14 @@ def generate_random_numbers(pdf,
                             pars=[],
                             shape=(1,),
                             xmin=torch.tensor(1.0,
-                                              device=device,
+                                              device=None,
                                               dtype=torch.float64),
                             xmax=torch.tensor(10.0,
-                                              device=device,
+                                              device=None,
                                               dtype=torch.float64),
                             normalized=False,  # deprecated
                             logarithmic=True,
-                            n_integration=300,
+                            n_integration=3000,
                             device=None,
                             verbose=False,  # deprecated
                             **kwargs):
@@ -190,20 +190,62 @@ def generate_random_numbers(pdf,
         assignment = (x_final == float('Inf'))
         generate_size = len(x_final[assignment])
         if logarithmic:
-            x = 10.0**((torch.log10(xmax) -
-                        torch.log10(xmin)) *
-                       torch.rand(shape,
-                                  device=device, dtype=torch.float64) +
-                       torch.log10(xmin))
-            p = (pdf(x, *pars, **kwargs) * x)[assignment]
-            x = x[assignment]
+            if pars != []:
+                try:
+                    iter(pars[0])
+                    if len(pars[0]) != len(xmin):
+                        raise ValueError(
+                            "Vectorized parameter in pars must have the same length as xmin and xmax do."
+                        )
+                    x = 10.0**((torch.log10(xmax[assignment]) -
+                                torch.log10(xmin[assignment])) *
+                               torch.rand((generate_size, ),
+                                          device=device,
+                                          dtype=torch.float64) +
+                               torch.log10(xmin[assignment]))
+                    p = pdf(x,
+                            *[pars[0][assignment], *pars[1:]],
+                            **kwargs) * x
+                except (IndexError, TypeError) as exc:
+                    x = 10.0**((torch.log10(xmax[assignment]) -
+                                torch.log10(xmin[assignment])) *
+                               torch.rand((generate_size, ),
+                                          device=device,
+                                          dtype=torch.float64) +
+                               torch.log10(xmin[assignment]))
+                    p = pdf(x,
+                            *pars,
+                            **kwargs) * x
+            else:  # pars == []
+                x = 10.0**((torch.log10(xmax[assignment]) -
+                            torch.log10(xmin[assignment])) *
+                           torch.rand((generate_size, ),
+                                      device=device,
+                                      dtype=torch.float64) +
+                           torch.log10(xmin[assignment]))
+                p = pdf(x, **kwargs) * x
         else:
-            x = ((xmax - xmin) *
-                 torch.rand(shape,
-                            device=device,
-                            dtype=torch.float64) + xmin)
-            p = (pdf(x, *pars, **kwargs))[assignment]
-            x = x[assignment]
+            try:
+                iter(pars[0])
+                if len(pars[0]) != len(xmin):
+                    raise ValueError(
+                        "Vectorized parameter in pars must have the same length as xmin and xmax do."
+                    )
+                x = ((xmax[assignment] - xmin[assignment]) *
+                     torch.rand((generate_size, ),
+                                device=device,
+                                dtype=torch.float64) + xmin[assignment])
+                p = pdf(x,
+                        *[pars[0][assignment], *pars[1:]],
+                        **kwargs)
+            except (IndexError, TypeError) as exc:
+                x = ((xmax[assignment] - xmin[assignment]) *
+                     torch.rand((generate_size, ),
+                                device=device,
+                                dtype=torch.float64) + xmin[assignment])
+                p = pdf(x,
+                        *pars,
+                        **kwargs)
         if True in torch.isnan(x):
             raise RuntimeError("Nan occured in x!")
         if True in torch.isnan(p):
@@ -221,7 +263,7 @@ def generate_random_numbers(pdf,
 def generate_random_distance_traveled(e_particle: torch.tensor,
                                       e_particle_node: torch.tensor,
                                       r_particle_node: torch.tensor,
-                                      device=device, dtype=torch.float64):
+                                      device=None, dtype=torch.float64):
     """
     Generates tensor of random particle traveled distances
     at e_particle energy points given that the
@@ -242,7 +284,7 @@ def generate_random_distance_traveled(e_particle: torch.tensor,
 def generate_random_cosine(shape=(1,),
                            cosmin=-1.0,  # or tensor with size of shape
                            cosmax=1.0,  # or tensor with size of shape
-                           device=device, dtype=torch.float64):
+                           device=None, dtype=torch.float64):
     return(
         (cosmax - cosmin) * torch.rand(max(shape),
                                        device=device,
@@ -272,7 +314,7 @@ def sigma_pair_cross_section_reduced(s):
 def auxiliary_pair_production_function(x,  # min
                                        x_max,
                                        photon_field_file_path='',
-                                       device=device,
+                                       device=None,
                                        dtype=torch.float64):
     dim2 = 100
     ys = []
@@ -321,7 +363,7 @@ def pair_production_differential_cross_section_s(
         s,
         energy,
         photon_field_file_path='',
-        device=device, dtype=torch.float64):
+        device=None, dtype=torch.float64):
     return (sigma_pair_cross_section_reduced(s) *
             (auxiliary_pair_production_function(
                 s / (4.0 * energy),
@@ -412,7 +454,7 @@ def ic_electron_energy_loss_distance_rate(s, eps_thr):
 def generate_random_y(s,
                       eps_thr=None,
                       logarithmic=True,
-                      device=device,
+                      device=None,
                       dtype=torch.float64,
                       process='PP'):  # or 'IC', i.e.
     # Pair Production or Inverse Compton
@@ -462,7 +504,7 @@ def generate_random_y(s,
 def generate_random_background_photon_energy(
         shape,
         photon_field_file_path,
-        device=device,
+        device=None,
         energy_photon_min=None,
         energy_photon_max=None,
         **kwargs
@@ -505,7 +547,7 @@ def generate_random_background_photon_energy(
 def generate_random_s(energy,
                       photon_field_file_path,
                       random_cosine=True,
-                      device=device,
+                      device=None,
                       process='PP',  # or 'IC'
                       energy_ic_threshold=None,
                       energy_photon_max=None,
@@ -522,6 +564,9 @@ def generate_random_s(energy,
         )
         if random_cosine:
             cosmax = 1.0 - S_MIN / (2.0 * epsilon * energy)
+            filt_cosmax = (cosmax > 1.0)
+            if len(cosmax[filt_cosmax] > 0):
+                raise RuntimeError("cosmax > 1!")
             cosine = generate_random_cosine(energy.shape,
                                             cosmax=cosmax,
                                             device=device,
@@ -849,7 +894,7 @@ def make_sed_from_monte_carlo_cash_files(
 #######################################################################
 def monte_carlo_process(
         primary_energy_tensor_size: int,
-        region_size,  # : astropy.Quantity or str
+        region_size,  # : astropy.Quantity
         photon_field_file_path: str,
         injection_place='zero',  # 'zero' means in the beginning of the region;
         # 'uniform' means it will be uniformly distributed between 0 and region_size
@@ -868,7 +913,7 @@ def monte_carlo_process(
         terminator_step_number=None,
         folder='output',
         ic_losses_below_threshold=False,
-        device=device, dtype=torch.float64):
+        device=None, dtype=torch.float64):
     """
     gammas and electrons consist of 4 rows:
 
@@ -1031,7 +1076,9 @@ def monte_carlo_process(
             traveled = generate_random_distance_traveled(
                 gammas[1, :],
                 e_gamma_node,
-                r_gamma_node)
+                r_gamma_node,
+                device=device
+            )
             gammas[2, :] += traveled
             print("Median distance traveled by gamma rays at this step: {:.3e} cm = {:.2f} % of region size".format(
                 torch.median(gammas[2, :]),
@@ -1041,7 +1088,9 @@ def monte_carlo_process(
             traveled_electrons = generate_random_distance_traveled(
                 electrons[1, :],
                 e_ic_node,
-                r_ic_node)
+                r_ic_node,
+                device=device
+            )
             electrons[2, :] += traveled_electrons
             print("Median distance traveled by electrons at this step: {:.3e} cm = {:.2f} % of region size".format(
                 torch.median(electrons[2, :]),
@@ -1120,10 +1169,11 @@ def monte_carlo_process(
                 random_cosine=True,
                 process='PP',
                 device=device,
-                energy_photon_max=energy_photon_max)
+                energy_photon_max=energy_photon_max
+            )
             filt_s_gammas = (s_gammas >= S_MIN)
             print("There are {:d} gamma interactions under S_MIN".format(
-                (filt_s_gammas[filt_s_gammas == False]).shape[0])
+                len(s_gammas[torch.logical_not(filt_s_gammas)]))
             )
             s_gammas = s_gammas[filt_s_gammas]
         if no_electrons == False:
@@ -1137,7 +1187,7 @@ def monte_carlo_process(
                 device=device,
                 energy_photon_max=energy_photon_max)
             filt_s_electrons = (s_electrons >= (ELECTRON_REST_ENERGY**2 /
-                                (1.0 - eps_thr)))
+                                                (1.0 - eps_thr)))
             print(
                 "There are {:d} electron interactions under ELECTRON_REST_ENERGY**2 / (1.0 - eps_thr)".format(
                     (filt_s_electrons[filt_s_electrons == False]).shape[0])
