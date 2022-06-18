@@ -88,8 +88,8 @@ def separate_continuum_and_spikes(y_input, x_input,
     difference = np.diff(filt_spike)
     x_starters = x[difference == True][0::2]
     x_enders = x[difference == True][1::2]
-    x_continuum = x[difference == False]
-    y_continuum = y[difference == False]
+    x_continuum = np.copy(x)
+    y_continuum = np.copy(y)
     if len(x_starters) > len(x_enders):
         x_starters = x_starters[:-1]
     if len(x_enders) > len(x_starters):
@@ -103,7 +103,9 @@ def separate_continuum_and_spikes(y_input, x_input,
             y[int(np.argwhere(x_starters[i] == x)):
               int(np.argwhere(x_enders[i] == x))]
         )
-    return (x_spikes, y_spikes)
+        y_continuum[int(np.argwhere(x_starters[i] == x)):
+                    int(np.argwhere(x_enders[i] == x)) + 1] = np.min(y)
+    return (x_spikes, y_spikes, x_continuum, y_continuum)
 
 
 std_window_width = 5
@@ -113,11 +115,11 @@ max_min_ratio = calculate_windowed_max_min_ratio(
     std_window_width=std_window_width
 )
 
-x_spikes, y_spikes = separate_continuum_and_spikes(
+x_spikes, y_spikes, x_continuum, y_continuum = separate_continuum_and_spikes(
     field_numpy[:, 1],
     field_numpy[:, 0],
     std_window_width=std_window_width,
-    filt_value=4.0
+    filt_value=3.0
 )
 
 print("Number of detected high lines = ", len(x_spikes))
@@ -143,6 +145,13 @@ plt.plot(
     linewidth=1,
     color='r',
     label='max_min_ratio'
+)
+plt.plot(
+    x_continuum, y_continuum / np.max(field_numpy),
+    linestyle='--',
+    linewidth=1,
+    color='b',
+    label='continuum'
 )
 
 for i in range(0, len(x_spikes)):
