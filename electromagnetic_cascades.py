@@ -986,6 +986,8 @@ def monte_carlo_process(
     region_size = region_size.to(u.cm).value
     if energy_photon_max is not None:
         energy_photon_max = energy_photon_max.to(u.eV).value
+    else:
+        energy_photon_max = field[-1, 0]
     gammas = torch.zeros((4, primary_energy_tensor_size),
                          device=device, dtype=torch.float64)
     electrons = torch.zeros((4, primary_energy_tensor_size),
@@ -1217,7 +1219,7 @@ def monte_carlo_process(
                                       gammas[3, :][filt_less_than_max]])
             s_gammas = generate_random_s(
                 gammas[1, :],
-                photon_field_file_path,
+                field,
                 random_cosine=True,
                 process='PP',
                 device=device,
@@ -1234,7 +1236,7 @@ def monte_carlo_process(
             eps_thr = energy_ic_threshold / electrons[1, :]
             s_electrons = generate_random_s(
                 electrons[1, :],
-                photon_field_file_path,
+                field,
                 random_cosine=True,
                 process='IC',
                 energy_ic_threshold=energy_ic_threshold,
