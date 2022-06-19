@@ -452,7 +452,8 @@ def calculate_windowed_max_min_ratio(y_input, x_input,
 def continuum_and_spikes(y_input, x_input,
                          std_window_width=5,
                          filt_value=3.0,
-                         device=None):
+                         device=None,
+                         empirical_line_correction_factor=2.0):
     y = torch.clone(y_input).reshape(np.max(y_input.shape))
     x = torch.clone(x_input).reshape(np.max(x_input.shape))
     sh = int(std_window_width / 2)
@@ -488,6 +489,7 @@ def continuum_and_spikes(y_input, x_input,
         weight_individual_spikes[i] = torch.trapezoid(y[start:(end + 1)],
                                                       x[start:(end + 1)])
         y_continuum[start:(end + 1)] = torch.min(y)
+    weight_individual_spikes *= empirical_line_correction_factor
     weight_total_spikes = torch.sum(weight_individual_spikes)
     weight_continuum = torch.trapezoid(y_continuum, x_continuum)
     weight_total = weight_continuum + weight_total_spikes
@@ -1406,8 +1408,8 @@ def monte_carlo_process(
 if __name__ == '__main__':
     path = 'data/PKS1510-089/nph'
     field_numpy = np.loadtxt(path)
-    emin = 1.0
-    emax = 4.0e+01
+    emin = field_numpy[0, 0]
+    emax = field_numpy[-1, 0]
     s = 1000
     a = np.log10(emax / emin) / s
     r = np.arange(0, s + 1, step=1)
@@ -1421,8 +1423,8 @@ if __name__ == '__main__':
         shape,
         field,
         device='cuda',
-        energy_photon_min=1.0,
-        energy_photon_max=4.0e+03,
+        energy_photon_min=emin,
+        energy_photon_max=emax,
         std_window_width=5,
         filt_value=3.0
     ).detach().to('cpu').numpy()
