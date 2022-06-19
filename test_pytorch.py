@@ -21,6 +21,7 @@ import subprocess
 ELECTRON_REST_ENERGY = const.m_e.to(u.eV, u.mass_energy()).value
 S_MIN = (2.0 * ELECTRON_REST_ENERGY)**2
 print('Hey!')
+#########################################################################
 # device = 'cpu'  # 'cuda'
 # # if False:
 # if torch.cuda.is_available():
@@ -32,37 +33,12 @@ print('Hey!')
 #     device = 'cpu'
 #     print("Using CPU!!!")
 ########################################################################
-# #0 Precalculate gamma-gamma interaction rate
-# r_blr = ((0.036 * u.pc).to(u.cm)).value  # BLR radius in cm
-# print("r_blr = {:.3e}".format(r_blr))
-# size = 100_000
-# primary_energy_0 = 1.0e+12  # eV
-# # field = "/home/raylend/Science/agnprocesses/data/PKS1510-089/nph"
-# field = "/home/raylend/Science/agnprocesses/data/test_1eV.txt"
-# en_ph = np.logspace(-5, 1.5, 6852) * u.eV
-# n_ph = spec.greybody_spectrum(en_ph, 1.0 * u.eV)
-# grey = spec.create_2column_table(en_ph, n_ph)
-# np.savetxt(field, grey, fmt="%.6e")
-# energy_gamma_node, r_gamma_gamma_node = gamma_gamma.interaction_rate(
-#     field,
-#     1.0e+08 * u.eV,
-#     primary_energy_0 * u.eV * 5,
-#     background_photon_energy_unit=u.eV,
-#     background_photon_density_unit=(u.eV * u.cm**3)**(-1)
-# )
-# energy_gamma_node = torch.tensor(energy_gamma_node.value,
-#                                  device=device, dtype=torch.float64)
-# r_gamma_gamma_node = torch.tensor(r_gamma_gamma_node.value,
-#                                   device=device, dtype=torch.float64)
-########################################################################
-
 f_support_interpolation = torchinterp1d.Interp1d()
 
 
-def torch_interpolation(x_new_tensor: torch.tensor,
-                        x_old_tensor: torch.tensor,
-                        y_old_tensor: torch.tensor):
-
+def torch_interpolation(x_old_tensor: torch.tensor,
+                        y_old_tensor: torch.tensor,
+                        x_new_tensor: torch.tensor):
     return(
         torch.squeeze(10.0**f_support_interpolation(
             torch.log10(x_old_tensor),
@@ -70,23 +46,6 @@ def torch_interpolation(x_new_tensor: torch.tensor,
             torch.log10(x_new_tensor))
         )
     )
-
-########################################################################
-
-
-def background_photon_density_interpolated(energy_new,
-                                           photon_field_file_path='',
-                                           device=None, dtype=torch.float64):
-    field = np.loadtxt(photon_field_file_path)
-    energy_old = torch.tensor(field[:, 0],
-                              device=device, dtype=torch.float64)
-    density_old = torch.tensor(field[:, 1],
-                               device=device, dtype=torch.float64)
-    return torch_interpolation(energy_new,
-                               energy_old,
-                               density_old)
-
-########################################################################
 
 
 def generate_random_numbers(pdf,
@@ -271,9 +230,9 @@ def generate_random_distance_traveled(e_particle: torch.tensor,
     computed at e_particle_node energy points.
     """
     r_particle = torch_interpolation(
-        e_particle,
         e_particle_node,
-        r_particle_node
+        r_particle_node,
+        e_particle
     )
     uniform_random = torch.rand(e_particle.shape, device=device,
                                 dtype=torch.float64)
@@ -335,30 +294,6 @@ def auxiliary_pair_production_function(x,  # min
     return (ys)
 
 
-#######################################################################
-# eps_max = 1000.0  # eV
-# s_precalc = torch.logspace(float(torch.log10(torch.tensor(
-#     [S_MIN / (4.0 * 1.0e+15), ], device=device, dtype=torch.float64))),
-#     float(torch.log10(torch.tensor(
-#         [10000.0, ], device=device, dtype=torch.float64))),
-#     10000,
-#     device=device, dtype=torch.float64)
-#
-# print(f"s_precalc.shape = {s_precalc.shape}")
-#
-# f_precalc = auxiliary_pair_production_function(s_precalc,
-#                                                photon_field_file_path=field,
-#                                                device=device, dtype=torch.float64)
-#
-# print(f"f_precalc.shape = {f_precalc.shape}")
-#
-#
-# def auxiliary_pair_production_function_precalculated(x):
-#     return torch_interpolation(x, s_precalc, f_precalc)
-#
-
-
-#######################################################################
 def pair_production_differential_cross_section_s(
         s,
         energy,
@@ -500,17 +435,102 @@ def generate_random_y(s,
         )
 
 
-#######################################################################
+def calculate_windowed_max_min_ratio(y_input, x_input, std_window_width=9):
+    try:
+        y = np.copy(y_input).reshape(np.max(y_input.shape))
+        x = np.copy(x_input).reshape(np.max(x_input.shape))
+    except:
+        raise ValueError(
+            "y and x must have a shape, which can be reshaped into one-dimensional shape"
+        )
+    max_min_ratio = np.zeros((y.shape[0] - std_window_width, ))
+    for i in range(0, max_min_ratio.shape[0]):
+        sh = int(std_window_width / 2)
+        y_ind = i + sh
+        if std_window_width % 2 == 1:
+            # max_min_ratio[i] = np.std(y[y_ind - sh:y_ind + sh + 1] /
+            #                  np.mean(y[y_ind - sh:y_ind + sh + 1]))
+            max_min_ratio[i] = (np.max(y[y_ind - sh:y_ind + sh + 1]) /
+                                np.min(y[y_ind - sh:y_ind + sh + 1]))
+        else:
+            # max_min_ratio[i] = np.std(y[y_ind - sh:y_ind + sh] /
+            #                  np.mean(y[y_ind - sh:y_ind + sh]))
+            max_min_ratio[i] = (np.max(y[y_ind - sh:y_ind + sh]) /
+                                np.min(y[y_ind - sh:y_ind + sh]))
+    return max_min_ratio
+
+
+def continuum_and_spikes(y_input, x_input,
+                         std_window_width=9,
+                         filt_value=0.5):
+    if type(y_input) != type(np.array([1.])):
+        y_input = y_input.detach().to('cpu').numpy()
+    if type(x_input) != type(np.array([1.])):
+        x_input = x_input.detach().to('cpu').numpy()
+    try:
+        y = np.copy(y_input).reshape(np.max(y_input.shape))
+        x = np.copy(x_input).reshape(np.max(x_input.shape))
+        sh = int(std_window_width / 2)
+    except:
+        raise ValueError(
+            "y and x must have a shape, which can be reshaped into one-dimensional shape"
+        )
+    max_min_ratio = calculate_windowed_max_min_ratio(
+        y, x, std_window_width=std_window_width
+    )
+    if std_window_width % 2 == 1:
+        x = x[sh + 1: -sh][:-1]
+        y = y[sh + 1: -sh][:-1]
+    else:
+        x = x[sh:-sh][:-1]
+        y = y[sh:-sh][:-1]
+    filt_spike = (max_min_ratio > filt_value)
+    difference = np.diff(filt_spike)
+    x_starters = x[difference == True][0::2]
+    x_enders = x[difference == True][1::2]
+    x_continuum = np.copy(x)
+    y_continuum = np.copy(y)
+    if len(x_starters) > len(x_enders):
+        x_starters = x_starters[:-1]
+    if len(x_enders) > len(x_starters):
+        x_enders = x_enders[:-1]
+    x_spikes = np.zeros(x_starters.shape)
+    y_spikes = np.zeros(x_starters.shape)
+    weight_individual_spikes = np.zeros(y_spikes.shape)
+    for i in range(0, len(x_starters)):
+        start = int(np.argwhere(x_starters[i] == x))
+        end = int(np.argwhere(x_enders[i] == x))
+        x_spikes[i] = float(x[int((start + end) / 2)])
+        y_spikes[i] = np.max(
+            y[start:end]
+        )
+        weight_individual_spikes[i] = simps(y[start:end], x[start:end])
+        y_continuum[start:(end + 1)] = np.min(y)
+    weight_total_spikes = np.sum(weight_individual_spikes)
+    weight_continuum = simps(y_continuum, x_continuum)
+    weight_total = weight_continuum + weight_total_spikes
+    weight_continuum /= weight_total
+    weight_total_spikes /= weight_total
+    weight_individual_spikes /= weight_total
+    print("Probability of continuum is {:.3e}".format(weight_continuum))
+    print("Probability of spikes is {:.3e}".format(weight_total_spikes))
+    return ((weight_continuum, weight_individual_spikes,
+             x_continuum, y_continuum,
+             x_spikes, y_spikes))
+
+
 def generate_random_background_photon_energy(
         shape,
-        photon_field_file_path,
+        field,
         device=None,
         energy_photon_min=None,
         energy_photon_max=None,
+        legacy=True,
+        std_window_width=9,
+        filt_value=0.5,
         **kwargs
 ):
-    if energy_photon_min is None or energy_photon_max is None:
-        field = np.loadtxt(photon_field_file_path)
+    epsilons = torch.zeros(shape, device=device, dtype=torch.float64)
     if energy_photon_min is None:
         energy_photon_min = field[0, 0]
         xmin = torch.ones(shape, device=device,
@@ -525,25 +545,53 @@ def generate_random_background_photon_energy(
     else:
         xmax = torch.ones(shape, device=device,
                           dtype=torch.float64) * energy_photon_max
-    pdf = partial(background_photon_density_interpolated,
-                  photon_field_file_path=photon_field_file_path,
-                  device=device,
-                  dtype=torch.float64)
-    return (generate_random_numbers(
+    _, _, x_global_continuum, y_global_continuum, _, _ = continuum_and_spikes(
+        field[:, 1], field[:, 0],
+        std_window_width=std_window_width,
+        filt_value=filt_value
+    )
+    weight_continuum = []
+    weight_individual_spikes = []
+    x_spikes = []
+    y_spikes = []
+    for i in range(0, xmax.shape[0]):
+        filt_min_max = torch.logical_and((field[:, 0] >= xmin[i]),
+                                         (field[:, 0] <= xmax[i]))
+        x = field[:, 0][filt_min_max]
+        y = field[:, 1][filt_min_max]
+        a, b, c, d, e, f = continuum_and_spikes(
+            y, x,
+            std_window_width=std_window_width,
+            filt_value=filt_value
+        )
+        weight_continuum.append(a)
+        weight_individual_spikes.append(b)
+        x_spikes.append(e)
+        y_spikes.append(f)
+    weight_continuum = torch.tensor(weight_continuum,
+                                    device=device, dtype=torch.float64)
+    continuum_question = torch.rand(xmax.shape,
+                                    device=device,
+                                    dtype=torch.float64)
+    filt_continuum = (continuum_question < weight_continuum)
+    pdf = partial(torch_interpolation,
+                  x_global_continuum,
+                  y_global_continuum)
+    epsilons[filt_continuum] = generate_random_numbers(
         pdf,
         pars=[],
-        shape=shape,
-        xmin=xmin,
-        xmax=xmax,
-        normalized=True,
+        shape=xmin[filt_continuum].shape,
+        xmin=xmin[filt_continuum],
+        xmax=xmax[filt_continuum],
         logarithmic=True,
         n_integration=3000,
         device=device,
         **kwargs
-    ))
+    )
+
+    return None
 
 
-########################################################################
 def generate_random_s(energy,
                       photon_field_file_path,
                       random_cosine=True,
@@ -1035,10 +1083,10 @@ def monte_carlo_process(
              primary_energy_max]) * u.eV * 1.10,
         background_photon_energy_unit=background_photon_energy_unit,
         background_photon_density_unit=background_photon_density_unit)
-    save_table = spec.create_2column_table(
-        e_gamma_node,
-        r_gamma_node
-    )
+    # save_table = spec.create_2column_table(
+    #     e_gamma_node,
+    #     r_gamma_node
+    # )
     # np.savetxt(
     #     "/home/raylend/Science/agnprocesses/processes/EBL_models/Gimore2012_gamma-gamma_int_rate_z=0.015_final.txt",
     #     save_table,
