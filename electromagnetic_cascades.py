@@ -609,7 +609,10 @@ def generate_random_s(energy,
             cosmax = 1.0 - S_MIN / (2.0 * epsilon * energy)
             filt_cosmax = (cosmax > 1.0)
             if len(cosmax[filt_cosmax] > 0):
-                raise RuntimeError("cosmax > 1!")
+                print("cosmax > 1! at {}".format(
+                    len(filt_cosmax[filt_cosmax == True])
+                ))
+                # raise RuntimeError("cosmax > 1!")
             cosine = generate_random_cosine(energy.shape,
                                             cosmax=cosmax,
                                             device=device,
@@ -639,7 +642,10 @@ def generate_random_s(energy,
                       ) / b
             filt_cosmax = (cosmax > 1.0)
             if len(cosmax[filt_cosmax] > 0):
-                raise RuntimeError("cosmax > 1!")
+                print("cosmax > 1! at {}".format(
+                    len(filt_cosmax[filt_cosmax == True])
+                ))
+                # raise RuntimeError("cosmax > 1!")
             cosine = generate_random_cosine(energy.shape,
                                             cosmax=cosmax,
                                             device=device,
@@ -1231,7 +1237,7 @@ def monte_carlo_process(
             print("There are {:d} gamma interactions under S_MIN".format(
                 len(s_gammas[torch.logical_not(filt_s_gammas)]))
             )
-            s_gammas = s_gammas[filt_s_gammas]
+            # s_gammas = s_gammas[filt_s_gammas]
         if no_electrons == False:
             eps_thr = energy_ic_threshold / electrons[1, :]
             s_electrons = generate_random_s(
@@ -1251,9 +1257,9 @@ def monte_carlo_process(
                 "There are {:d} electron interactions under ELECTRON_REST_ENERGY**2 / (1.0 - eps_thr)".format(
                     (filt_s_electrons[filt_s_electrons == False]).shape[0])
             )
-            s_electrons = s_electrons[filt_s_electrons]
-            eps_thr = eps_thr[filt_s_electrons]
-            traveled_electrons = traveled_electrons[filt_s_electrons]
+            # s_electrons = s_electrons[filt_s_electrons]
+            # eps_thr = eps_thr[filt_s_electrons]
+            # traveled_electrons = traveled_electrons[filt_s_electrons]
             if ic_losses_below_threshold:
                 electron_losses = (ic_electron_energy_loss_distance_rate(
                     s_electrons, eps_thr) * traveled_electrons
