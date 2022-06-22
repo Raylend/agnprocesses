@@ -656,14 +656,25 @@ def generate_random_s(energy,
                 2.0 * energy * epsilon * (1.0 - b * cosine))
 
 
-########################################################################
-def center_energy(energy_bins):
+def get_center_energy(energy_bins):
     return 10.0**((np.log10(energy_bins[1:]) +
                    np.log10(energy_bins[:-1])) /
                   2.0)
 
 
-########################################################################
+def get_energy_bins(center_energy_array):
+    """
+    Given an array with centers of energy bins returns an array of bins edges.
+    """
+    a = np.log10(center_energy_array[1] / center_energy_array[0])
+    e0 = center_energy_array[0] / 10**(0.5 * a)
+    return(e0 * 10.0**(a * np.arange(0,
+                                     np.max(center_energy_array.shape),
+                                     step=1)
+                       )
+           )
+
+
 def make_2d_energy_histogram(
     primary_energy,
     another_energy,
@@ -705,6 +716,7 @@ def reweight_2d_histogram(histogram_2d,
                           reweight_array='primary',  # or 'another'
                           return_1d=True,
                           number_of_particles=1,
+                          density=False,
                           old=False):
     if type(primary_energy_center) == torch.Tensor:
         primary_energy_center = primary_energy_center.detach().to(
@@ -734,22 +746,32 @@ def reweight_2d_histogram(histogram_2d,
         for i in range(0, h.shape[0]):
             h[:, i] = h[:, i] * k_modif[i]
     else:
-        warnings.warn("Reweighting with primary energy array",
-                      UserWarning)
-        for i in range(0, h.shape[0]):
-            h[i, :] = h[i, :] * k_modif[i]
+        raise ValueError(
+            "Only 'primary' or 'another' options of the reweight_array parameter are possible"
+        )
     h = (h * n_particles_theory_old /
          number_of_particles)
     if return_1d:
         if reweight_array == 'primary':
-            return np.sum(h, axis=0).reshape(
-                another_energy_center.shape)
+            if density == False:
+                return np.sum(h, axis=0).reshape(
+                    another_energy_center.shape)
+            else:
+                eb = get_energy_bins(primary_energy_center)
+                return np.sum(h * (eb[1:] - eb[:-1]), axis=0).reshape(
+                    another_energy_center.shape)
         elif reweight_array == 'another':
-            return np.sum(h, axis=1).reshape(
-                primary_energy_center.shape)
+            if density == False:
+                return np.sum(h, axis=1).reshape(
+                    primary_energy_center.shape)
+            else:
+                eb = get_energy_bins(another_energy_center)
+                return np.sum(h * (eb[1:] - eb[:-1]), axis=1).reshape(
+                    primary_energy_center.shape)
         else:
-            return np.sum(h, axis=0).reshape(
-                primary_energy_center.shape)
+            raise ValueError(
+                "Only 'primary' or 'another' options of the reweight_array parameter are possible"
+            )
     else:
         return h
 
@@ -796,8 +818,8 @@ def make_SED(
         )
     else:
         histogram_2d = np.copy(histogram_2d_precalculated)
-    primary_energy_center = center_energy(primary_energy_bins)
-    another_energy_center = center_energy(energy_bins)
+    primary_energy_center = get_center_energy(primary_energy_bins)
+    another_energy_center = get_center_energy(energy_bins)
     spectrum = reweight_2d_histogram(
         histogram_2d,
         primary_energy_center,
@@ -811,6 +833,7 @@ def make_SED(
         reweight_array=reweight_array,  # or 'another'
         return_1d=True,
         number_of_particles=number_of_particles,
+        density=density,
         old=old
     )
     spectrum = spectrum / (energy_bins[1:] - energy_bins[:-1])
