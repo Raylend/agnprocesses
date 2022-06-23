@@ -511,6 +511,7 @@ def generate_random_background_photon_energy(
     energy_photon_max=None,
     std_window_width=5,
     filt_value=3.0,
+    empirical_line_correction_factor=2.0,
     **kwargs
 ):
     epsilons = torch.zeros(shape, device=device, dtype=torch.float64)
@@ -534,7 +535,8 @@ def generate_random_background_photon_energy(
             field[:, 1], field[:, 0],
             std_window_width=std_window_width,
             filt_value=filt_value,
-            device=device
+            device=device,
+            empirical_line_correction_factor=empirical_line_correction_factor
         )
     spikes_question = torch.rand(xmax.shape,
                                  device=device,
@@ -593,6 +595,7 @@ def generate_random_s(energy,
                       dtype=torch.float64,
                       std_window_width=5,
                       filt_value=3.0,
+                      empirical_line_correction_factor=2.0,
                       **cosine_kwargs):
     if process == 'PP':
         energy_photon_min = S_MIN / (4.0 * energy) * 1.010
@@ -603,7 +606,8 @@ def generate_random_s(energy,
             energy_photon_min=energy_photon_min,
             energy_photon_max=energy_photon_max,
             std_window_width=std_window_width,
-            filt_value=filt_value
+            filt_value=filt_value,
+            empirical_line_correction_factor=empirical_line_correction_factor
         )
         if random_cosine:
             cosmax = 1.0 - S_MIN / (2.0 * epsilon * energy)
@@ -634,7 +638,8 @@ def generate_random_s(energy,
                                (2.0 * (1.0 + b) * (1.0 - eps_thr) * energy)) * 1.010,
             energy_photon_max=energy_photon_max,
             std_window_width=std_window_width,
-            filt_value=filt_value
+            filt_value=filt_value,
+            empirical_line_correction_factor=empirical_line_correction_factor
         )
         if random_cosine:
             cosmax = (1.0 - (eps_thr * ELECTRON_REST_ENERGY**2) /
@@ -875,6 +880,7 @@ def make_sed_from_monte_carlo_cash_files(
     verbose=False,
     output='sed',  # or 'histogram_2d_precalculated'
     device='cpu',
+    minimum_injection_coord=None,
     old=False
 ):
     """
@@ -908,13 +914,16 @@ def make_sed_from_monte_carlo_cash_files(
     cash_files = cmd_line_rtrn.split('\n')
     hist = 0.0
     counter = 0
+    if minimum_injection_coord is None or minimum_injection_coord < 0:
+        minimum_injection_coord = 0.0
     for file in cash_files:
         tens = torch.load(file,
                           map_location=torch.device(device))
         if cascade_type_of_particles == 'all':
+            filt_coord = (tens[3, :] >= minimum_injection_coord)
             hist = hist + make_2d_energy_histogram(
-                tens[0, :],
-                tens[1, :],
+                tens[0, :][filt_coord],
+                tens[1, :][filt_coord],
                 bins_primary=primary_energy_bins,
                 bins_another=energy_bins,
                 verbose=verbose,
@@ -922,9 +931,10 @@ def make_sed_from_monte_carlo_cash_files(
             )
         elif cascade_type_of_particles == 'survived':
             filt_survived = (tens[0, :] == tens[1, :])
+            filt_coord = (tens[3, :][filt_survived] >= minimum_injection_coord)
             hist = hist + make_2d_energy_histogram(
-                tens[0, :][filt_survived],
-                tens[1, :][filt_survived],
+                tens[0, :][filt_survived][filt_coord],
+                tens[1, :][filt_survived][filt_coord],
                 bins_primary=primary_energy_bins,
                 bins_another=energy_bins,
                 verbose=verbose,
@@ -932,9 +942,10 @@ def make_sed_from_monte_carlo_cash_files(
             )
         elif cascade_type_of_particles == 'cascade':
             filt_cascade = torch.logical_not(tens[0, :] == tens[1, :])
+            filt_coord = (tens[3, :][filt_cascade] >= minimum_injection_coord)
             hist = hist + make_2d_energy_histogram(
-                tens[0, :][filt_cascade],
-                tens[1, :][filt_cascade],
+                tens[0, :][filt_cascade][filt_coord],
+                tens[1, :][filt_cascade][filt_coord],
                 bins_primary=primary_energy_bins,
                 bins_another=energy_bins,
                 verbose=verbose,
@@ -992,6 +1003,7 @@ def monte_carlo_process(
         terminator_step_number=None,
         folder='output',
         ic_losses_below_threshold=False,
+        empirical_line_correction_factor=2.0,
         device=None, dtype=torch.float64):
     """
     gammas and electrons consist of 4 rows:
@@ -1254,7 +1266,8 @@ def monte_carlo_process(
                 device=device,
                 energy_photon_max=energy_photon_max,
                 std_window_width=std_window_width,
-                filt_value=filt_value
+                filt_value=filt_value,
+                empirical_line_correction_factor=empirical_line_correction_factor
             )
             filt_s_gammas = (s_gammas >= S_MIN)
             print("There are {:d} gamma interactions under S_MIN".format(
@@ -1272,7 +1285,8 @@ def monte_carlo_process(
                 device=device,
                 energy_photon_max=energy_photon_max,
                 std_window_width=std_window_width,
-                filt_value=filt_value
+                filt_value=filt_value,
+                empirical_line_correction_factor=empirical_line_correction_factor
             )
             filt_s_electrons = (s_electrons >= (ELECTRON_REST_ENERGY**2 /
                                                 (1.0 - eps_thr)))
@@ -1457,7 +1471,8 @@ if __name__ == '__main__':
         energy_photon_min=emin,
         energy_photon_max=emax,
         std_window_width=5,
-        filt_value=3.0
+        filt_value=3.0,
+        empirical_line_correction_factor=2.0
     ).detach().to('cpu').numpy()
     t_end_numpy = get_current_date_time()
     print("Sampling ended at: ",
