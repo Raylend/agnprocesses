@@ -458,7 +458,7 @@ def continuum_and_spikes(y_input, x_input,
     x = torch.clone(x_input).reshape(np.max(x_input.shape))
     sh = int(std_window_width / 2)
     max_min_ratio = calculate_windowed_max_min_ratio(
-        y, x, std_window_width=std_window_width
+        y, x, std_window_width=std_window_width, device=device
     )
     if std_window_width % 2 == 1:
         x = x[sh + 1: -sh][:-1]
@@ -538,6 +538,15 @@ def generate_random_background_photon_energy(
             device=device,
             empirical_line_correction_factor=empirical_line_correction_factor
         )
+    # print("weight_global_continuum = {:.3e}".format(float(
+    #     weight_global_continuum))
+    # )
+    # print("weight_global_lines = {:.3e}".format(float(
+    #     1.0 - weight_global_continuum))
+    # )
+    # print("x_global_spikes:")
+    # print(x_global_spikes)
+    # print("x_global_continuum.shape = ", x_global_continuum.shape)
     spikes_question = torch.rand(xmax.shape,
                                  device=device,
                                  dtype=torch.float64)
@@ -1016,7 +1025,7 @@ def monte_carlo_process(
     t_start = get_current_date_time()
     print('Monte-Carlo process started: ', date_time_string_human_friendly())
     field_numpy = np.loadtxt(photon_field_file_path)
-    field = torch.tensor(field_numpy, device='cuda', dtype=torch.float64)
+    field = torch.tensor(field_numpy, device=device, dtype=torch.float64)
     folder = 'data/torch/' + str(folder)
     if not os.path.isdir(folder):
         os.mkdir(folder)
@@ -1197,7 +1206,7 @@ def monte_carlo_process(
         if no_gammas == False:  # i.e. there are some gamma rays in the moment
             filter_escaped = (gammas[2, :] > region_size)
             filter_escaped = torch.logical_or(filter_escaped,
-                                              (gammas[1, 0] <
+                                              (gammas[1, :] <
                                                observable_energy_min))
             filter_not_escaped = torch.logical_not(filter_escaped)
             if len(filter_escaped[filter_escaped == True]) > 0:
@@ -1215,7 +1224,7 @@ def monte_carlo_process(
         if no_electrons == False:
             filter_escaped = (electrons[2, :] > region_size)
             filter_escaped = torch.logical_or(filter_escaped,
-                                              (electrons[1, 0] <
+                                              (electrons[1, :] <
                                                observable_energy_min))
             filter_not_escaped = torch.logical_not(filter_escaped)
             traveled_electrons = traveled_electrons[filter_not_escaped]
