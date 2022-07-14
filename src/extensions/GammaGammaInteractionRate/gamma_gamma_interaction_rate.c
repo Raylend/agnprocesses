@@ -8,7 +8,7 @@
 #define ELECTRON_REST_ENERGY 5.1100e+05 // eV
 #define THOMSON_CROSS_SECTION 6.6524e-25 // cm^2
 #define CM_TO_EV  5.068e+04
-#define SIZE_PHOTON_FIELD 6852
+#define SIZE_PHOTON_FIELD 6852 // 100
 #define SIZE_ENERGY 100
 //
 //
@@ -50,6 +50,7 @@ void gamma_gamma_interaction_rate(char *photon_path, char *output_path, double E
     //
     //
     fp = fopen(output_path, "w");
+    puts(output_path);
     if (fp == NULL)
     {
         printf("Couldn't create output/... file!\n");
