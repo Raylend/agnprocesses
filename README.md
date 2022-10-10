@@ -11,17 +11,22 @@ git clone https://github.com/Raylend/agnprocesses.git
 cd agnprocesses
 ```
 
-2. (Recommended) Create virtual environment for the library
+2. If you have not already installed [conda](https://www.anaconda.com/products/individual) or [mamba](https://mamba.readthedocs.io/en/latest/installation.html), please install one of them (or both). After the installation has completed, open a new terminal window in the project folder. Create an environment for the project and install dependencies via
 
 ```bash
-python3 -m venv agnenv
-source agnenv/bin/activate
+conda env create -f requirements.dev.yml
 ```
 
-3. Install dependencies (**TBD: list dependencies in setup script**)
+or
 
 ```bash
-pip install -r requirements.dev.txt
+mamba env create -f requirements.dev.yml
+```
+
+3. Activate the installed environment:
+
+```bash
+conda activate agnprocesses
 ```
 
 4. Compile shared libraries and install `agnprocesses` python package
@@ -30,12 +35,13 @@ pip install -r requirements.dev.txt
 make install
 ```
 
-5. Compiled libraries are currently placed at `./bin/shared` and you must define LD_LIBRARY_PATH environment variable to use them. This may be done in `~/.bashrc` or in any other startup script (e.g. in `agnenv/bin/activate`). (**TBD: install libs in /usr/local/lib or in user-specified location**)
+5. Compiled libraries are currently placed at `./bin/shared` and you must define LD_LIBRARY_PATH environment variable to use them. To do so run
 
 ```bash
-echo "
-export LD_LIBRARY_PATH=$(pwd)/bin/shared:\$LD_LIBRARY_PATH" >> your-activation-script
+conda env config vars set LD_LIBRARY_PATH=$(pwd)/bin/shared
 ```
+
+6. (Optional) For running electromagnetic_cascades.py module with *NVIDIA CUDA* you should additionally install pytorch following the [instructions](https://pytorch.org/get-started/locally/).
 
 ## Development
 
@@ -51,8 +57,6 @@ Clean and install in one command:
 make reinstall
 ```
 
-
 ## Usage
 
 See `examples` for notebooks with example usage.
-
