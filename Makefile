@@ -18,6 +18,8 @@ icir_lib:
 install: bh_lib ggir_lib ggpp_lib ph_lib icir_lib
 	python setup.py install
 	mkdir -p data/torch
+	mkdir -p src/extensions/InverseComptonInteractionRate/input
+	mkdir -p src/extensions/InverseComptonInteractionRate/output
 
 clean:
 	pip uninstall -y agnprocesses && rm -rf bin build dist src/agnprocesses.egg-info

@@ -12,7 +12,6 @@ import subprocess  # to run prompt scripts from python
 import warnings
 import agnprocesses.ext.icir
 import agnprocesses.spectra as spec
-import os
 
 
 def test():
@@ -517,14 +516,6 @@ def IC_interaction_rate(
     if field[:, 0].shape[0] > 7000:
         raise NotImplementedError(
             "field should contain no more than 7000 strings (rows)! (more strings will be implemented in future)")
-    os.makedirs(
-        'src/extensions/InverseComptonInteractionRate/input',
-        exist_ok=True
-    )
-    os.makedirs(
-        'src/extensions/InverseComptonInteractionRate/output',
-        exist_ok=True
-    )
     photon_path = 'src/extensions/InverseComptonInteractionRate/input/photon_field.txt'
     np.savetxt(photon_path, field, fmt='%.6e')
     ########################################################################
