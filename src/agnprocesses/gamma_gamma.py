@@ -168,6 +168,8 @@ def interaction_rate(field,
     if field[:, 0].shape[0] > 7000:
         raise NotImplementedError(
             "field should contain no more than 7000 strings (rows)! (more strings will be implemented in future)")
+    os.makedirs(str(ggir_in), exist_ok=True)
+    os.makedirs(str(ggir_out), exist_ok=True)
     photon_path = str(ggir_in / 'photon_field.txt')
     output_path = str(ggir_out / 'gamma-gamma_interaction_rate.txt')
     np.savetxt(photon_path, field, fmt='%.6e')
