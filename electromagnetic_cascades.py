@@ -32,7 +32,7 @@ print('Hey!')
 #     device = 'cpu'
 #     print("Using CPU!!!")
 ########################################################################
-f_support_interpolation = torchinterp1d.Interp1d()
+f_support_interpolation = torchinterp1d.interp1d
 
 
 def torch_interpolation(x_old_tensor: torch.tensor,
