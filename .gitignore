@@ -273,3 +273,6 @@ data/torch/*
 # temporary .txt files
 src/extensions/InverseComptonInteractionRate/output/*.txt
 src/extensions/InverseComptonInteractionRate/input/*.txt
+
+# legacy files
+old_files/*
