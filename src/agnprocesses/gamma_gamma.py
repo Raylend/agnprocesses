@@ -10,6 +10,7 @@ import numpy as np
 
 import agnprocesses.ext.ggir as ggir_ext
 import agnprocesses.ext.ggpp as ggpp_ext
+import os
 from .data_files import get_io_paths
 
 
