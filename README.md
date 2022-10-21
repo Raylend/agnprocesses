@@ -38,7 +38,7 @@ make install
 5. Compiled libraries are currently placed at `./bin/shared` and you must define LD_LIBRARY_PATH environment variable to use them. To do so run
 
 ```bash
-conda env config vars set LD_LIBRARY_PATH=$(pwd)/bin/shared
+conda env config vars set LD_LIBRARY_PATH=$(pwd)/bin/shared:$LD_LIBRARY_PATH
 ```
 
 6. (Optional) For running `electromagnetic_cascades.py` module with *NVIDIA CUDA* you should additionally install `pytorch` following the [instructions](https://pytorch.org/get-started/locally/) (if you used `mamba` during previous steps you should substitute `conda` with `mamba` in `pytorch` installation command). **Attention**: after the `pytorch` installation the full computer restart is required for `torch.cuda_is_availbale()` to return `True`.
