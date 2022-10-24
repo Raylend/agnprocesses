@@ -58,7 +58,7 @@ void inverse_compton_interaction_rate(char *photon_path, double E_min, double E_
     }
     for (int i = 0; i < SIZE_ENERGY; i++)
     {
-        if (1) //(rate[i] > 0)
+        if (rate[i] > 0)
         {
             fprintf(fp, "%le    %le\n", energy[i], rate[i]);
         }
