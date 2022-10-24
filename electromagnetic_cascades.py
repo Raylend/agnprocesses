@@ -1027,8 +1027,14 @@ def monte_carlo_process(
     field_numpy = np.loadtxt(photon_field_file_path)
     field = torch.tensor(field_numpy, device=device, dtype=torch.float64)
     folder = 'data/torch/' + str(folder)
-    if not os.path.isdir(folder):
-        os.mkdir(folder)
+    try:
+        os.makedirs(folder, exist_ok=False)
+    except FileExistsError:
+        raise FileExistsError(
+            "The electromagnetic_cascades output folder already exists!\n" +
+            "Please, change the name of the folder parameter or rename/delete" +
+            " the existing folder."
+        )
     new_electrons = None
     new_positrons = None
     new_gammas = None
