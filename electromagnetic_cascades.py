@@ -1126,8 +1126,6 @@ def monte_carlo_process(
     ######################################################################
     energy_ic_threshold = energy_ic_threshold.to(u.eV).value
     observable_energy_min = observable_energy_min.to(u.eV).value
-    # observable_energy_min = np.min([observable_energy_min,
-    #                                 energy_ic_threshold])
     observable_energy_max = observable_energy_max.to(u.eV).value
     if observable_energy_max <= observable_energy_min:
         raise ValueError(
@@ -1190,10 +1188,6 @@ def monte_carlo_process(
                 device=device
             )
             gammas[2, :] += traveled
-            print("Median distance traveled by gamma rays at this step: {:.3e} cm = {:.2f} % of region size".format(
-                torch.median(gammas[2, :]),
-                torch.median(gammas[2, :]) / region_size * 100.0
-            ))
         if no_electrons == False:
             traveled_electrons = generate_random_distance_traveled(
                 electrons[1, :],
@@ -1202,18 +1196,14 @@ def monte_carlo_process(
                 device=device
             )
             electrons[2, :] += traveled_electrons
-            print("Median distance traveled by electrons at this step: {:.3e} cm = {:.2f} % of region size".format(
-                torch.median(electrons[2, :]),
-                torch.median(electrons[2, :]) / region_size * 100.0
-            ))
         ###################################################################
         # Save out escaped particles and
         # update gammas and electrons removing escaped particles.
         if no_gammas == False:  # i.e. there are some gamma rays in the moment
-            filter_escaped = (gammas[2, :] > region_size)
-            filter_escaped = torch.logical_or(filter_escaped,
-                                              (gammas[1, :] <
-                                               observable_energy_min))
+            filter_escaped = torch.logical_or(
+                (gammas[2, :] > region_size),
+                (gammas[1, :] < observable_energy_min)
+            )
             filter_not_escaped = torch.logical_not(filter_escaped)
             if len(filter_escaped[filter_escaped == True]) > 0:
                 torch.save(torch.stack([gammas[0, :][filter_escaped],
@@ -1228,11 +1218,13 @@ def monte_carlo_process(
                                   gammas[2, :][filter_not_escaped],
                                   gammas[3, :][filter_not_escaped]])
         if no_electrons == False:
-            filter_escaped = (electrons[2, :] > region_size)
-            filter_escaped = torch.logical_or(filter_escaped,
-                                              (electrons[1, :] <
-                                               observable_energy_min))
+            filter_escaped = torch.logical_or(
+                (electrons[2, :] > region_size),
+                (electrons[1, :] < observable_energy_min)
+            )
             filter_not_escaped = torch.logical_not(filter_escaped)
+            # distance covered by electrons which did not escape :
+            # (at the current step)
             traveled_electrons = traveled_electrons[filter_not_escaped]
             if len(filter_escaped[filter_escaped == True]) > 0:
                 torch.save(torch.stack([electrons[0, :][filter_escaped],
