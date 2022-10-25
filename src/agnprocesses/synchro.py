@@ -4,6 +4,7 @@ according to Derishev & Aharonian (2019)
 https://doi.org/10.3847/1538-4357/ab536a
 """
 from astropy import units as u
+from astropy.units.core import UnitConversionError
 from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
@@ -24,6 +25,17 @@ def derishev(
     particle_mass=const.m_e.cgs,
     particle_charge=const.e.gauss
 ):
+    try:
+        nu = nu.to(u.Hz)
+    except UnitConversionError:
+        try:
+            nu = (nu / const.h).to(u.Hz)
+        except UnitConversionError:
+            raise UnitConversionError(
+                "'nu' must be frequency array in Hz or " +
+                "energy array in energy units!"
+            )
+    ############################################################################
     particle_mass = particle_mass.to(u.g, u.mass_energy())
     try:
         b = b.to(u.G)
@@ -78,8 +90,15 @@ def derishev_synchro_spec(
     particle_charge=const.e.gauss
 ):
     """
-    nu is the independent variable, frequency in Hz (1/s)
+    nu is the independent variable:
+    frequency array in Hz (1/s) (NOT the angular frequency)
+
+    OR
+
+    energy array in energy units
+
     b is the magnetic field strength
+
     norm is the normalization coefficient of charged particles
 
     spec_law must be 'power_law', 'broken_power_law',
