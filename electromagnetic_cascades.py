@@ -4,6 +4,7 @@ import numpy as np
 import agnprocesses.ic as ic
 import agnprocesses.gamma_gamma as gamma_gamma
 import agnprocesses.spectra as spec
+import agnprocesses.synchro as synchro
 from astropy import units as u
 from astropy import constants as const
 import time
@@ -995,8 +996,6 @@ def monte_carlo_process(
         photon_field_file_path: str,
         injection_place='zero',  # 'zero' means in the beginning of the region;
         # 'uniform' means it will be uniformly distributed between 0 and region_size
-        std_window_width=5,
-        filt_value=3.0,
         primary_spectrum=spec.power_law,
         primary_spectrum_params=[1.0, 1.0, 1.0],
         primary_energy_min=1.0e+08 * u.eV,
@@ -1012,8 +1011,17 @@ def monte_carlo_process(
         terminator_step_number=None,
         folder='output',
         ic_losses_below_threshold=False,
+        synchrotron_losses=False,
+        magnetic_field_strength=None,
+        # prefactor defining minimal synchrotron photon energy
+        synchro_nu_min_prefactor=1.0e-01,
+        # prefactor defining maximal synchrotron photon energy
+        synchro_nu_max_prefactor=1.0e+01,
+        std_window_width=5,
+        filt_value=3.0,
         empirical_line_correction_factor=2.0,
-        device=None, dtype=torch.float64):
+        device=None,
+        dtype=torch.float64):
     """
     gammas and electrons consist of 4 rows:
 
@@ -1129,35 +1137,95 @@ def monte_carlo_process(
     observable_energy_max = observable_energy_max.to(u.eV).value
     if observable_energy_max <= observable_energy_min:
         raise ValueError(
-            "observable_energy_min must be less than observable_energy_max!")
+            "'observable_energy_min' must be less than 'observable_energy_max'!")
     en = np.logspace(np.log10(min([observable_energy_min,
                                    primary_energy_min])),
                      np.log10(max([observable_energy_max,
                                    primary_energy_max])),
                      10_000)
+    el_min = min([observable_energy_min,
+                  primary_energy_min]) * u.eV * 0.90
+    el_max = max([observable_energy_max,
+                  primary_energy_max]) * u.eV * 1.10
+    if synchrotron_losses:
+        if magnetic_field_strength is None:
+            raise ValueError(
+                "'magnetic_field_strength' should be defined as an astropy Quantity!"
+            )
+        else:
+            try:
+                magnetic_field_strength = magnetic_field_strength.to(u.G)
+            except:
+                try:
+                    magnetic_field_strength = magnetic_field_strength.to(
+                        u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
+                    )
+                except:
+                    raise ValueError(
+                        "Magnetic field strength must be in gauss units!"
+                    )
+            if magnetic_field_strength.unit == u.G:
+                magnetic_field_strength = (magnetic_field_strength.value *
+                                           u.g**0.5 * u.cm**(-0.5) * u.s**(-1))
+            elif magnetic_field_strength.unit == u.T:
+                raise ValueError(
+                    "Please, define 'magnetic_field_strength' in gauss units"
+                )
+            omega_B = ((const.e.gauss * magnetic_field_strength) /
+                       (const.m_e * const.c)).to(u.s**(-1))
+            print("omega_B = {:.3e}".format(omega_B))
+            synchro_nu_min = (synchro_nu_min_prefactor * 3.0 * const.h *
+                              (el_min / ELECTRON_REST_ENERGY / u.eV)**2 *
+                              omega_B /
+                              (4.0 * np.pi)).to(u.eV)
+            print("minimal energy of synchrotron photons is {:.3e}".format(
+                synchro_nu_min))
+            synchro_nu_max = (synchro_nu_max_prefactor * 3.0 * const.h *
+                              (el_max / ELECTRON_REST_ENERGY / u.eV)**2 *
+                              omega_B /
+                              (4.0 * np.pi)).to(u.eV)
+            print("maximal energy of synchrotron photons is {:.3e}".format(
+                synchro_nu_max))
+            synchro_nu_array = np.logspace(
+                np.log10(synchro_nu_min.value),
+                np.log10(synchro_nu_max.value),
+                100
+            ) * u.eV  # array with synchrotron photon energies for synchro spec
+            e_synchro_node = np.logspace(
+                np.log10(el_min.value),
+                np.log10(el_max.value),
+                100
+            ) * u.eV  # array with electron energies for losses dE/dt calculation
+            de_dt_synchro_node = synchro.energy_losses_rate(
+                e_synchro_node,
+                magnetic_field_strength,
+                particle_mass=const.m_e.cgs,
+                particle_charge=const.e.gauss,
+                synchro_nu_min_prefactor=synchro_nu_min_prefactor,
+                synchro_nu_max_prefactor=synchro_nu_max_prefactor
+            )
+            de_dt_synchro_node = spec.to_current_energy(
+                en * u.eV,
+                e_synchro_node,
+                de_dt_synchro_node
+            ).to(u.eV / u.s)
+            e_synchro_node = torch.tensor(
+                en, device=device, dtype=dtype
+            )  # eV
+            de_dt_synchro_node = torch.tensor(
+                de_dt_synchro_node.value, device=device, dtype=dtype
+            )  # eV / s
+
     e_gamma_node, r_gamma_node = gamma_gamma.interaction_rate(
         photon_field_file_path,
-        min([observable_energy_min,
-             primary_energy_min]) * u.eV * 0.90,
-        max([observable_energy_max,
-             primary_energy_max]) * u.eV * 1.10,
+        el_min,
+        el_max,
         background_photon_energy_unit=background_photon_energy_unit,
         background_photon_density_unit=background_photon_density_unit)
-    # save_table = spec.create_2column_table(
-    #     e_gamma_node,
-    #     r_gamma_node
-    # )
-    # np.savetxt(
-    #     "/home/raylend/Science/agnprocesses/processes/EBL_models/Gimore2012_gamma-gamma_int_rate_z=0.015_final.txt",
-    #     save_table,
-    #     fmt="%.6e"
-    # )
     e_ic_node, r_ic_node = ic.IC_interaction_rate(
         photon_field_file_path,
-        min([observable_energy_min,
-             primary_energy_min]) * u.eV * 0.90,
-        max([observable_energy_max,
-             primary_energy_max]) * u.eV * 1.10,
+        el_min,
+        el_max,
         energy_ic_threshold * u.eV,
         background_photon_energy_unit=background_photon_energy_unit,
         background_photon_density_unit=background_photon_density_unit)
