@@ -4,6 +4,7 @@ according to Derishev & Aharonian (2019)
 https://doi.org/10.3847/1538-4357/ab536a
 """
 from astropy import units as u
+from astropy.units.core import UnitConversionError
 from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
@@ -24,6 +25,17 @@ def derishev(
     particle_mass=const.m_e.cgs,
     particle_charge=const.e.gauss
 ):
+    try:
+        nu = nu.to(u.Hz)
+    except UnitConversionError:
+        try:
+            nu = (nu / const.h).to(u.Hz)
+        except UnitConversionError:
+            raise UnitConversionError(
+                "'nu' must be frequency array in Hz or " +
+                "energy array in energy units!"
+            )
+    ############################################################################
     particle_mass = particle_mass.to(u.g, u.mass_energy())
     try:
         b = b.to(u.G)
@@ -78,8 +90,15 @@ def derishev_synchro_spec(
     particle_charge=const.e.gauss
 ):
     """
-    nu is the independent variable, frequency in Hz (1/s)
+    nu is the independent variable:
+    frequency array in Hz (1/s) (NOT the angular frequency)
+
+    OR
+
+    energy array in energy units
+
     b is the magnetic field strength
+
     norm is the normalization coefficient of charged particles
 
     spec_law must be 'power_law', 'broken_power_law',
@@ -100,7 +119,7 @@ def derishev_synchro_spec(
 
     en_ref is reference energy for 'power_law' or 'exponential_cutoff'
 
-    ALL energies must be with the same units of astropy quantities or must be
+    ALL electron energies must be with the same units of astropy quantities or must be
     nd.arrays (in the latter case they will be considered as Lorentz factors)
     """
     ############################################################################
@@ -234,39 +253,111 @@ def derishev_synchro_table(
     return f
 
 
-def timescale(e, b):
+def energy_losses_rate(
+    e, b,
+    particle_mass=const.m_e.cgs,
+    particle_charge=const.e.gauss,
+    # prefactor defining minimal synchrotron photon energy
+    synchro_nu_min_prefactor=1.0e-01,
+    # prefactor defining maximal synchrotron photon energy
+    synchro_nu_max_prefactor=1.0e+01
+):
     """
-    Calculates characteristic timescale of synchrotron energy losses.
+    Calculates energy losses rate dE/dt for synchrotron energy losses in eV/s.
 
-    e is astropy array-like Quantity in energy units
+    e (electron energy) is astropy array-like Quantity in energy units
 
-    b is the magnetic field strength
+    b is the magnetic field strength in gauss units
     """
+    try:
+        b = b.to(u.G)
+    except:
+        try:
+            b = b.to(
+                u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
+            )
+        except:
+            raise ValueError(
+                "Magnetic field strength must be in gauss units!"
+            )
+    if b.unit == u.G:
+        b = (b.value *
+             u.g**0.5 * u.cm**(-0.5) * u.s**(-1))
+    elif b.unit == u.T:
+        raise ValueError(
+            "Please, define 'magnetic_field_strength' in gauss units"
+        )
+    e = e.to(u.eV)
+    el_min = np.min(e)
+    el_max = np.max(e)
+    omega_B = ((particle_charge * b) /
+               (particle_mass * const.c)).to(u.s**(-1))
+    print("omega_B = {:.3e}".format(omega_B))
+    synchro_nu_min = (synchro_nu_min_prefactor * 3.0 * const.h *
+                      (el_min / (particle_mass.to(u.eV, u.mass_energy())))**2 *
+                      omega_B /
+                      (4.0 * np.pi)).to(u.eV)
+    print("minimal energy of synchrotron photons is {:.3e}".format(
+        synchro_nu_min))
+    synchro_nu_max = (synchro_nu_max_prefactor * 3.0 * const.h *
+                      (el_max / (particle_mass.to(u.eV, u.mass_energy())))**2 *
+                      omega_B /
+                      (4.0 * np.pi)).to(u.eV)
+    print("maximal energy of synchrotron photons is {:.3e}".format(
+        synchro_nu_max))
+
     def de_dt_synchro_mono(e0):
         e0 = e0.to(u.eV)
-        e_s = np.logspace(1.0e-06 * np.log10(e0.value),
-                          np.log10(e0.value), 100) * u.eV
-        nu = (e_s / const.h).to(u.Hz)
-        d2n_de_dt = derishev_synchro_spec(nu,
+        e_s = np.logspace(np.log10(synchro_nu_min.value * 0.9),
+                          np.log10(min([e0.value,
+                                        synchro_nu_max.value]) * 1.1),
+                          100) * u.eV
+        d2n_de_dt = derishev_synchro_spec(e_s,
                                           b,
                                           spec_law='monoenergetic',
-                                          en_mono=e0)
-        dE_dt = simps(d2n_de_dt.value * e_s.value, e_s.value) * \
-            d2n_de_dt.unit * e_s.unit**2
-        return (dE_dt)
+                                          en_mono=e0,
+                                          particle_mass=particle_mass,
+                                          particle_charge=particle_charge)
+        return((simps(d2n_de_dt.value * e_s.value, e_s.value) *
+                d2n_de_dt.unit * e_s.unit**2).to(u.eV / u.s))
 
     def de_dt_synchro_mono_value(e0):
         return(de_dt_synchro_mono(e0).value)
-    ###########################################################################
-    dE_dt = np.array(list(map(de_dt_synchro_mono_value, e))) * \
-        de_dt_synchro_mono(e[0]).unit
-    ###########################################################################
+
+    return(np.array(list(map(de_dt_synchro_mono_value, e))) *
+           de_dt_synchro_mono(e[0]).unit)
+
+
+def timescale(
+    e, b,
+    particle_mass=const.m_e.cgs,
+    particle_charge=const.e.gauss,
+    # prefactor defining minimal synchrotron photon energy
+    synchro_nu_min_prefactor=1.0e-01,
+    # prefactor defining maximal synchrotron photon energy
+    synchro_nu_max_prefactor=1.0e+01
+):
+    """
+    Calculates characteristic timescale of synchrotron energy losses.
+
+    e (electron energy) is astropy array-like Quantity in energy units
+
+    b is the magnetic field strength in gauss units
+    """
+    dE_dt = energy_losses_rate(
+        e, b,
+        particle_mass=particle_mass,
+        particle_charge=particle_charge,
+        synchro_nu_min_prefactor=synchro_nu_min_prefactor,
+        synchro_nu_max_prefactor=synchro_nu_max_prefactor
+    )
     t = (e / dE_dt).to(u.s)
     return(t)
 
 
 def gyroperiod(e, b,
-               particle_mass=const.m_e.cgs):
+               particle_mass=const.m_e.cgs,
+               particle_charge=const.e.gauss):
     """
     Computes relativistic synchrotron gyroperiod.
 
@@ -288,9 +379,10 @@ def gyroperiod(e, b,
             b = b.to(u.g**0.5 * u.cm**(-0.5) * u.s**(-1))
         except:
             raise ValueError(
-                "b must be reducable to u.G or u.g**0.5 * u.cm**(-0.5) * u.s**(-1)!")
+                "b must be reducable to u.G or u.g**0.5 * u.cm**(-0.5) * u.s**(-1)!"
+            )
     ###########################################################################
-    return(((2.0 * np.pi * e) / (const.c.cgs * const.e.gauss * b)).to(u.s))
+    return(((2.0 * np.pi * e) / (const.c.cgs * particle_charge * b)).to(u.s))
 
 
 def ssa_broken_power_law(e_photon, b,

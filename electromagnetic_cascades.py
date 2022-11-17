@@ -4,6 +4,7 @@ import numpy as np
 import agnprocesses.ic as ic
 import agnprocesses.gamma_gamma as gamma_gamma
 import agnprocesses.spectra as spec
+import agnprocesses.synchro as synchro
 from astropy import units as u
 from astropy import constants as const
 import time
@@ -989,31 +990,70 @@ def make_sed_from_monte_carlo_cash_files(
 
 
 #######################################################################
+def derishev_q_function_torch(x):
+    """
+    This is Derishev's Q_{PL} function
+    see his eq. (10) and (41)
+    """
+    return (1.0 + x**(-2.0 / 3.0)) * torch.exp(-2.0 * x**(2.0 / 3.0))
+
+
+#######################################################################
+def derishev_spec_torch(
+    nu, en, b=(1.0 * u.g**0.5 / u.cm**0.5 / u.s).value,
+    particle_mass=const.m_e.cgs.value,
+    particle_charge=const.e.gauss.value
+):
+    """
+    nu is torch.tensor in Hz
+
+    en is float electron energy in eV
+    """
+    g = en / ELECTRON_REST_ENERGY
+    omega_0 = (4.0 / 3.0 * g**2 / (particle_mass * const.c.cgs.value))
+    omega_0 = omega_0 * particle_charge * b
+    nu_0 = (omega_0 / (2.0 * np.pi))
+    x = nu / nu_0
+    f = const.alpha.value / (3.0 * g**2) * derishev_q_function_torch(x)
+    return f
+
+
+#######################################################################
 def monte_carlo_process(
-        primary_energy_tensor_size: int,
-        region_size,  # : astropy.Quantity
-        photon_field_file_path: str,
-        injection_place='zero',  # 'zero' means in the beginning of the region;
-        # 'uniform' means it will be uniformly distributed between 0 and region_size
-        std_window_width=5,
-        filt_value=3.0,
-        primary_spectrum=spec.power_law,
-        primary_spectrum_params=[1.0, 1.0, 1.0],
-        primary_energy_min=1.0e+08 * u.eV,
-        primary_energy_max=1.0e+13 * u.eV,
-        energy_ic_threshold=1.0e+06 * u.eV,
-        primary_energy_tensor_user=None,
-        primary_particle='gamma',  # or 'electron'
-        observable_energy_min=1.0e+08 * u.eV,
-        observable_energy_max=1.0e+13 * u.eV,
-        background_photon_energy_unit=u.eV,
-        background_photon_density_unit=(u.eV * u.cm**3)**(-1),
-        energy_photon_max=None,
-        terminator_step_number=None,
-        folder='output',
-        ic_losses_below_threshold=False,
-        empirical_line_correction_factor=2.0,
-        device=None, dtype=torch.float64):
+    primary_energy_tensor_size: int,
+    region_size,  # : astropy.Quantity
+    photon_field_file_path: str,
+    injection_place='zero',  # 'zero' means in the beginning of the region;
+    # 'uniform' means it will be uniformly distributed between 0 and region_size
+    primary_spectrum=spec.power_law,
+    primary_spectrum_params=[1.0, 1.0, 1.0],
+    primary_energy_min=1.0e+08 * u.eV,
+    primary_energy_max=1.0e+13 * u.eV,
+    energy_ic_threshold=1.0e+06 * u.eV,
+    primary_energy_tensor_user=None,
+    primary_particle='gamma',  # or 'electron'
+    observable_energy_min=1.0e+08 * u.eV,
+    observable_energy_max=1.0e+13 * u.eV,
+    background_photon_energy_unit=u.eV,
+    background_photon_density_unit=(u.eV * u.cm**3)**(-1),
+    energy_photon_max=None,
+    terminator_step_number=None,
+    folder='output',
+    ic_losses_below_threshold=False,
+    synchrotron_losses_flag=False,
+    magnetic_field_strength=None,
+    # prefactor defining minimal synchrotron photon energy
+    synchro_nu_min_prefactor=1.0e-00,
+    # prefactor defining maximal synchrotron photon energy
+    synchro_nu_max_prefactor=5.0e+01,
+    synchro_losses_acceptable_fraction=0.50,
+    synchrotron_array_size=100,
+    std_window_width=5,
+    filt_value=3.0,
+    empirical_line_correction_factor=2.0,
+    device=None,
+    dtype=torch.float64
+):
     """
     gammas and electrons consist of 4 rows:
 
@@ -1126,40 +1166,101 @@ def monte_carlo_process(
     ######################################################################
     energy_ic_threshold = energy_ic_threshold.to(u.eV).value
     observable_energy_min = observable_energy_min.to(u.eV).value
-    # observable_energy_min = np.min([observable_energy_min,
-    #                                 energy_ic_threshold])
     observable_energy_max = observable_energy_max.to(u.eV).value
     if observable_energy_max <= observable_energy_min:
         raise ValueError(
-            "observable_energy_min must be less than observable_energy_max!")
+            "'observable_energy_min' must be less than 'observable_energy_max'!")
     en = np.logspace(np.log10(min([observable_energy_min,
                                    primary_energy_min])),
                      np.log10(max([observable_energy_max,
                                    primary_energy_max])),
                      10_000)
+    el_min = min([observable_energy_min,
+                  primary_energy_min]) * u.eV * 0.90
+    el_max = max([observable_energy_max,
+                  primary_energy_max]) * u.eV * 1.10
+    if synchrotron_losses_flag:
+        if magnetic_field_strength is None:
+            raise ValueError(
+                "'magnetic_field_strength' should be defined as an astropy Quantity!"
+            )
+        else:
+            try:
+                magnetic_field_strength = magnetic_field_strength.to(u.G)
+            except:
+                try:
+                    magnetic_field_strength = magnetic_field_strength.to(
+                        u.g**0.5 * u.cm**(-0.5) * u.s**(-1)
+                    )
+                except:
+                    raise ValueError(
+                        "Magnetic field strength must be in gauss units!"
+                    )
+            if magnetic_field_strength.unit == u.G:
+                magnetic_field_strength = (magnetic_field_strength.value *
+                                           u.g**0.5 * u.cm**(-0.5) * u.s**(-1))
+            elif magnetic_field_strength.unit == u.T:
+                raise ValueError(
+                    "Please, define 'magnetic_field_strength' in gauss units"
+                )
+            omega_B = ((const.e.gauss * magnetic_field_strength) /
+                       (const.m_e * const.c)).to(u.s**(-1))
+            synchro_nu_min = (synchro_nu_min_prefactor * 3.0 *
+                              (el_min / ELECTRON_REST_ENERGY / u.eV)**2 *
+                              omega_B /
+                              (4.0 * np.pi)).to(u.Hz)
+            synchro_nu_max = (synchro_nu_max_prefactor * 3.0 *
+                              (el_max / ELECTRON_REST_ENERGY / u.eV)**2 *
+                              omega_B /
+                              (4.0 * np.pi)).to(u.Hz)
+            synchro_nu_array = torch.logspace(
+                np.log10(synchro_nu_min.value),
+                np.log10(synchro_nu_max.value),
+                synchrotron_array_size,
+                dtype=dtype,
+                device=device
+            )  # array with synchrotron photon frequencies [Hz] for synchro spec
+            synchro_spec_array = torch.zeros(
+                synchro_nu_array.shape,
+                dtype=dtype,
+                device=device
+            )  # array with synchro spec
+            e_synchro_node = np.logspace(
+                np.log10(el_min.value),
+                np.log10(el_max.value),
+                100
+            ) * u.eV  # array with electron energies for losses dE/dt calculation
+            de_dt_synchro_node = synchro.energy_losses_rate(
+                e_synchro_node,
+                magnetic_field_strength,
+                particle_mass=const.m_e.cgs,
+                particle_charge=const.e.gauss,
+                synchro_nu_min_prefactor=synchro_nu_min_prefactor,
+                synchro_nu_max_prefactor=synchro_nu_max_prefactor
+            )
+            de_dt_synchro_node = spec.to_current_energy(
+                en * u.eV,
+                e_synchro_node,
+                de_dt_synchro_node
+            ).to(u.eV / u.s)
+            e_synchro_node = torch.tensor(
+                en, device=device, dtype=dtype
+            )  # eV
+            de_dl_synchro_node = torch.tensor(
+                (de_dt_synchro_node / const.c).to(u.eV / u.cm).value,
+                device=device, dtype=dtype
+            )  # eV / cm
+
     e_gamma_node, r_gamma_node = gamma_gamma.interaction_rate(
         photon_field_file_path,
-        min([observable_energy_min,
-             primary_energy_min]) * u.eV * 0.90,
-        max([observable_energy_max,
-             primary_energy_max]) * u.eV * 1.10,
+        el_min,
+        el_max,
         background_photon_energy_unit=background_photon_energy_unit,
         background_photon_density_unit=background_photon_density_unit)
-    # save_table = spec.create_2column_table(
-    #     e_gamma_node,
-    #     r_gamma_node
-    # )
-    # np.savetxt(
-    #     "/home/raylend/Science/agnprocesses/processes/EBL_models/Gimore2012_gamma-gamma_int_rate_z=0.015_final.txt",
-    #     save_table,
-    #     fmt="%.6e"
-    # )
     e_ic_node, r_ic_node = ic.IC_interaction_rate(
         photon_field_file_path,
-        min([observable_energy_min,
-             primary_energy_min]) * u.eV * 0.90,
-        max([observable_energy_max,
-             primary_energy_max]) * u.eV * 1.10,
+        el_min,
+        el_max,
         energy_ic_threshold * u.eV,
         background_photon_energy_unit=background_photon_energy_unit,
         background_photon_density_unit=background_photon_density_unit)
@@ -1183,37 +1284,162 @@ def monte_carlo_process(
         print(f"Step number {nstep}:")
         # Sample the distance traveled
         if no_gammas == False:
-            traveled = generate_random_distance_traveled(
+            traveled_gammas = generate_random_distance_traveled(
                 gammas[1, :],
                 e_gamma_node,
                 r_gamma_node,
                 device=device
             )
-            gammas[2, :] += traveled
-            print("Median distance traveled by gamma rays at this step: {:.3e} cm = {:.2f} % of region size".format(
-                torch.median(gammas[2, :]),
-                torch.median(gammas[2, :]) / region_size * 100.0
-            ))
+            filt_too_far = (traveled_gammas >
+                            (region_size - gammas[2, :]))
+            traveled_gammas[filt_too_far] = (
+                region_size - gammas[2, :][filt_too_far]
+            ) * 1.001
+            # propagating gamma rays
+            gammas[2, :] += traveled_gammas
         if no_electrons == False:
-            traveled_electrons = generate_random_distance_traveled(
-                electrons[1, :],
-                e_ic_node,
-                r_ic_node,
-                device=device
-            )
-            electrons[2, :] += traveled_electrons
-            print("Median distance traveled by electrons at this step: {:.3e} cm = {:.2f} % of region size".format(
-                torch.median(electrons[2, :]),
-                torch.median(electrons[2, :]) / region_size * 100.0
-            ))
+            if not synchrotron_losses_flag:  # pure IC electromagnetic cascade
+                traveled_electrons = generate_random_distance_traveled(
+                    electrons[1, :],
+                    e_ic_node,
+                    r_ic_node,
+                    device=device
+                )
+                filt_too_far = (traveled_electrons >
+                                (region_size - electrons[2, :]))
+                traveled_electrons[filt_too_far] = (
+                    region_size - electrons[2, :][filt_too_far]
+                ) * 1.001
+                # propagating electrons
+                electrons[2, :] += traveled_electrons
+            else:  # electromagnetic cascade with synchrotron losses
+                filt_unacceptable_synchro_losses = torch.ones(
+                    (len(electrons[2, :]),),
+                    dtype=torch.bool,
+                    device=device
+                )
+                synchro_loop_counter = 0
+                traveled_electrons = torch.zeros(
+                    (len(electrons[2, :]),),
+                    dtype=dtype,
+                    device=device
+                )
+                synchro_energy_losses = torch.zeros(
+                    (len(electrons[2, :]),),
+                    dtype=dtype,
+                    device=device
+                )
+                while True in filt_unacceptable_synchro_losses:
+                    print(f"synchro loop counter: {synchro_loop_counter}")
+                    traveled_electrons[
+                        filt_unacceptable_synchro_losses
+                    ] = generate_random_distance_traveled(
+                        electrons[1, :][filt_unacceptable_synchro_losses],
+                        e_ic_node,
+                        r_ic_node,
+                        device=device
+                    )
+                    filt_too_far = (
+                        traveled_electrons[filt_unacceptable_synchro_losses] >
+                        (region_size -
+                         electrons[2, :][filt_unacceptable_synchro_losses])
+                    )
+                    traveled_electrons[filt_unacceptable_synchro_losses][filt_too_far] = (
+                        region_size -
+                        electrons[2, :][filt_unacceptable_synchro_losses][filt_too_far]
+                    ) * 1.001
+                    synchro_energy_losses[filt_unacceptable_synchro_losses] = (
+                        # cm
+                        traveled_electrons[filt_unacceptable_synchro_losses] *
+                        torch_interpolation(
+                            e_synchro_node,
+                            de_dl_synchro_node,
+                            electrons[1, :][filt_unacceptable_synchro_losses]
+                        )  # eV / cm
+                    )  # eV
+                    filt_unacceptable_synchro_losses = (
+                        synchro_energy_losses >
+                        (synchro_losses_acceptable_fraction *
+                         electrons[1, :])
+                    )
+                    # print("type(filt_unacceptable_synchro_losses): ",
+                    #       type(filt_unacceptable_synchro_losses))
+                    # print("Median relative synchrotron losses at this step: {:3e}".format(
+                    #     torch.median(synchro_energy_losses / electrons[1, :])
+                    # ))
+                    # print("Maximum relative synchrotron losses at this step: {:3e}".format(
+                    #     torch.max(synchro_energy_losses / electrons[1, :])
+                    # ))
+                    # print("Minimum relative synchrotron losses at this step: {:3e}".format(
+                    #     torch.min(synchro_energy_losses / electrons[1, :])
+                    # ))
+                    print("Fraction of acceptable losses: {:.3e}".format(
+                        len(synchro_energy_losses[
+                            torch.logical_not(filt_unacceptable_synchro_losses)
+                        ]) / len(synchro_energy_losses)
+                    ))
+                    # for unacaptable energy loss fraction propagate electrons
+                    # for the acceptable length
+                    traveled_electrons[filt_unacceptable_synchro_losses] = (
+                        electrons[1, :][filt_unacceptable_synchro_losses] *
+                        synchro_losses_acceptable_fraction /
+                        synchro_energy_losses[filt_unacceptable_synchro_losses]
+                    )
+                    filt_too_far = (
+                        traveled_electrons[filt_unacceptable_synchro_losses] >
+                        (region_size -
+                         electrons[2, :][filt_unacceptable_synchro_losses])
+                    )
+                    traveled_electrons[
+                        filt_unacceptable_synchro_losses
+                    ][filt_too_far] = (
+                        region_size - electrons[2, :][
+                            filt_unacceptable_synchro_losses
+                        ][filt_too_far]
+                    ) * 1.001
+                    electrons[2, :][filt_unacceptable_synchro_losses] += (
+                        traveled_electrons[filt_unacceptable_synchro_losses]
+                    )
+                    # HERE calculate synchro spec HERE
+                    for elen in electrons[1, :][
+                        filt_unacceptable_synchro_losses
+                    ]:
+                        synchro_spec_array += derishev_spec_torch(
+                            synchro_nu_array,
+                            elen,
+                            b=magnetic_field_strength.value,
+                            particle_mass=const.m_e.cgs.value,
+                            particle_charge=const.e.gauss.value
+                        )
+                    # for unacaptable energy loss fraction subtract acceptable
+                    # energy losses
+                    electrons[1, :][
+                        filt_unacceptable_synchro_losses
+                    ] -= electrons[1, :][
+                        filt_unacceptable_synchro_losses
+                    ] * synchro_losses_acceptable_fraction
+                    synchro_loop_counter += 1
+                # HERE calculate synchro spec HERE
+                for elen in electrons[1, :]:
+                    synchro_spec_array += derishev_spec_torch(
+                        synchro_nu_array,
+                        elen,
+                        b=magnetic_field_strength.value,
+                        particle_mass=const.m_e.cgs.value,
+                        particle_charge=const.e.gauss.value
+                    )
+                # for now all acceptable energy loss fraction reduce electron energy
+                electrons[1, :] -= synchro_energy_losses
+                # propagate electrons for IC scattering
+                electrons[2, :] += traveled_electrons
         ###################################################################
         # Save out escaped particles and
         # update gammas and electrons removing escaped particles.
         if no_gammas == False:  # i.e. there are some gamma rays in the moment
-            filter_escaped = (gammas[2, :] > region_size)
-            filter_escaped = torch.logical_or(filter_escaped,
-                                              (gammas[1, :] <
-                                               observable_energy_min))
+            filter_escaped = torch.logical_or(
+                (gammas[2, :] >= region_size),
+                (gammas[1, :] < observable_energy_min)
+            )
             filter_not_escaped = torch.logical_not(filter_escaped)
             if len(filter_escaped[filter_escaped == True]) > 0:
                 torch.save(torch.stack([gammas[0, :][filter_escaped],
@@ -1227,12 +1453,14 @@ def monte_carlo_process(
                                   gammas[1, :][filter_not_escaped],
                                   gammas[2, :][filter_not_escaped],
                                   gammas[3, :][filter_not_escaped]])
-        if no_electrons == False:
-            filter_escaped = (electrons[2, :] > region_size)
-            filter_escaped = torch.logical_or(filter_escaped,
-                                              (electrons[1, :] <
-                                               observable_energy_min))
+        if no_electrons == False:  # i.e. there are some electrons in the moment
+            filter_escaped = torch.logical_or(
+                (electrons[2, :] >= region_size),
+                (electrons[1, :] < observable_energy_min)
+            )
             filter_not_escaped = torch.logical_not(filter_escaped)
+            # distance covered by electrons which did not escape
+            # (at the current step):
             traveled_electrons = traveled_electrons[filter_not_escaped]
             if len(filter_escaped[filter_escaped == True]) > 0:
                 torch.save(torch.stack([electrons[0, :][filter_escaped],
@@ -1454,6 +1682,17 @@ def monte_carlo_process(
             break
         if no_electrons == True and no_gammas == True:
             break
+    if synchrotron_losses_flag:
+        synchro_spec_array = (synchro_spec_array.detach().to('cpu').numpy()
+                              / const.h * 2.0 * np.pi)
+        synchro_table = spec.create_2column_table(
+            (synchro_nu_array * const.h * u.Hz).to(u.eV),
+            (synchro_spec_array *
+             (synchro_nu_array * const.h * u.Hz)**2).to(u.eV * u.s**(-1))
+        )
+        np.savetxt(folder + '/' + "synchro_energy_sed_table_eV_VS_eV_per_s.txt",
+                   synchro_table,
+                   fmt="%.6e")
     print("Done!")
     print('Monte-Carlo process finished: ', date_time_string_human_friendly())
     t_stop = get_current_date_time()
