@@ -297,14 +297,14 @@ def energy_losses_rate(
                       (el_min / (particle_mass.to(u.eV, u.mass_energy())))**2 *
                       omega_B /
                       (4.0 * np.pi)).to(u.eV)
-    print("minimal energy of synchrotron photons is {:.3e}".format(
-        synchro_nu_min))
+    print("minimal energy of synchrotron photons is {:.3e} = {:.3e}".format(
+        synchro_nu_min, (synchro_nu_min / const.h).to(u.Hz)))
     synchro_nu_max = (synchro_nu_max_prefactor * 3.0 * const.h *
                       (el_max / (particle_mass.to(u.eV, u.mass_energy())))**2 *
                       omega_B /
                       (4.0 * np.pi)).to(u.eV)
-    print("maximal energy of synchrotron photons is {:.3e}".format(
-        synchro_nu_max))
+    print("maximal energy of synchrotron photons is {:.3e} = {:.3e}".format(
+        synchro_nu_max, (synchro_nu_max / const.h).to(u.Hz)))
 
     def de_dt_synchro_mono(e0):
         e0 = e0.to(u.eV)
