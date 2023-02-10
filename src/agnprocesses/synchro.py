@@ -129,6 +129,27 @@ def derishev_synchro_spec(
         raise ValueError("Invalid spec_law. It must be one of {}"
                          .format(valid_spec_laws))
     f = None
+    if spec_law != 'monoenergetic':
+        try:
+            ee = en_min.unit * np.logspace(
+                np.log10(en_min.value),
+                np.log10(en_max.value),
+                number_of_integration
+            )
+        except AttributeError:
+            try:
+                ee = en_min * np.logspace(
+                    np.log10(en_min),
+                    np.log10(en_max),
+                    number_of_integration
+                ) * u.dimensionless_unscaled
+                en_min = en_min * u.dimensionless_unscaled
+                en_max = en_max * u.dimensionless_unscaled
+            except AttributeError:
+                raise AttributeError(
+                    "electron energy parameters must be either " +
+                    "astro.Quantities or floats (nd.arrays)"
+                )
     ############################################################################
     if spec_law == 'monoenergetic':
         par_list = [norm, en_mono]
@@ -145,12 +166,6 @@ def derishev_synchro_spec(
     elif spec_law == 'broken_power_law':
         par_list = [gamma1, gamma2, en_break, en_min, en_max, norm]
         if all(el is not None for el in par_list):
-            ee = en_min.unit * np.logspace(
-                np.log10(en_min.value),
-                np.log10(en_max.value),
-                number_of_integration
-            )
-
             def underintegral(energy):
                 return(
                     (derishev(
@@ -160,12 +175,14 @@ def derishev_synchro_spec(
                             energy, gamma1, gamma2, en_break, norm=norm)).value
                 )
             y = np.array(list(map(underintegral, ee)))
-            f = np.array(list(map(
+            f = (np.array(list(map(
                 lambda i: simps(y[:, i].reshape(ee.shape), ee.value), range(0, nu.shape[0])))) * derishev(
                     nu, ee[0], b=b,
                     particle_mass=particle_mass,
-                    particle_charge=particle_charge).unit * spec.broken_power_law(
-                    ee[0], gamma1, gamma2, en_break, norm=norm).unit * ee[0].unit
+                    particle_charge=particle_charge).unit *
+                spec.broken_power_law(
+                ee[0], gamma1, gamma2, en_break, norm=norm
+            ).unit * ee[0].unit)
         else:
             raise ValueError(
                 "Make sure you defined all of gamma1, gamma2,\
@@ -175,19 +192,16 @@ def derishev_synchro_spec(
     elif spec_law == 'exponential_cutoff':
         par_list = [gamma1, en_cutoff, en_min, en_max, norm, en_ref]
         if all(el is not None for el in par_list):
-            ee = en_min.unit * np.logspace(
-                np.log10(en_min.value),
-                np.log10(en_max.value),
-                number_of_integration
-            )
-
             def underintegral(energy):
                 return(
                     derishev(
                         nu, energy, b=b,
                         particle_mass=particle_mass,
-                        particle_charge=particle_charge) * spec.exponential_cutoff(
-                        energy, gamma1, en_cutoff, norm=norm, en_ref=en_ref)
+                        particle_charge=particle_charge
+                    ) *
+                    spec.exponential_cutoff(
+                        energy, gamma1, en_cutoff, norm=norm, en_ref=en_ref
+                    )
                 )
             y = np.array(list(map(underintegral, ee)))
             f = np.array(list(map(
@@ -198,6 +212,11 @@ def derishev_synchro_spec(
                 "Make sure you defined all of gamma1, en_cutoff,\
              en_min, en_max, norm, en_ref correctly"
             )
+    ############################################################################
+    elif spec_law == 'power_law':
+        raise NotImplementedError
+    else:
+        raise ValueError("'spec_law' must be among ", valid_spec_laws)
     ############################################################################
     return f
 
