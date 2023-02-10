@@ -99,10 +99,12 @@ def greybody_spectrum(en,
             energy = (const.h * nu).to("eV")
         else:
             raise ValueError(
-                "Invalid unit of en. It must be Hz or one of {}".format(list_of_energies)
+                "Invalid unit of en. It must be Hz or one of {}".format(
+                    list_of_energies)
             )
     except:
-        raise ValueError("Invalid unit of en. It must be Hz or one of {}".format(list_of_energies))
+        raise ValueError(
+            "Invalid unit of en. It must be Hz or one of {}".format(list_of_energies))
     ###########################################################################
     x = (nu / nu_char).to(u.dimensionless_unscaled)  # decompose()
     s = (8 * np.pi * const.h * nu**3) / const.c**3 / (np.exp(x) - 1)
@@ -135,7 +137,8 @@ def summ_spectra(e1, s1, e2, s2, nbin=100):
         if e2.shape[0] != s2.shape[0]:
             raise ValueError("sizes of e2 and s2 must be equal!")
     except AttributeError:
-        raise AttributeError("e1, s1, e2, s2 must be numpy arrays or array-like!")
+        raise AttributeError(
+            "e1, s1, e2, s2 must be numpy arrays or array-like!")
 
     try:
         e2 = e2.to(e1.unit)
@@ -204,7 +207,7 @@ def create_2column_table(col1, col2):
     return table
 
 
-def to_current_energy(e, e1, s1):
+def to_current_energy(e, e1, s1, extrapolate=False):
     """
     Interpolates s1 to points of e array given that s1 corresponds to
     the points of e1. E.g., SED s1 corresponds to energy bins e1, but you want
@@ -252,9 +255,16 @@ def to_current_energy(e, e1, s1):
     ###########################################################################
     logx1 = np.log10(e1)
     logy1 = np.log10(s1)
-    f1 = interpolate.interp1d(
-        logx1, logy1, kind="linear", bounds_error=False, fill_value=(-40, -40)
-    )
+    if extrapolate:
+        f1 = interpolate.interp1d(
+            logx1, logy1, kind="linear",
+            bounds_error=False, fill_value="extrapolate"
+        )
+    else:
+        f1 = interpolate.interp1d(
+            logx1, logy1, kind="linear",
+            bounds_error=False, fill_value=(-40, -40)
+        )
     x = np.log10(e)
     s = 10.0 ** (f1(x))  # new interpolated function values
     ###########################################################################
