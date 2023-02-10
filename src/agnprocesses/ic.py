@@ -250,11 +250,26 @@ def inverse_compton_spec(
     elif spec_law == 'broken_power_law':
         par_list = [gamma1, gamma2, en_break, en_min, en_max, norm]
         if all(el is not None for el in par_list):
-            ee = en_min.unit * np.logspace(
-                np.log10(en_min.value),
-                np.log10(en_max.to(en_min.unit).value),
-                number_of_integration
-            )
+            try:
+                ee = en_min.unit * np.logspace(
+                    np.log10(en_min.value),
+                    np.log10(en_max.value),
+                    number_of_integration
+                )
+            except AttributeError:
+                try:
+                    ee = en_min * np.logspace(
+                        np.log10(en_min),
+                        np.log10(en_max),
+                        number_of_integration
+                    ) * u.dimensionless_unscaled
+                    en_min = en_min * u.dimensionless_unscaled
+                    en_max = en_max * u.dimensionless_unscaled
+                except AttributeError:
+                    raise AttributeError(
+                        "electron energy parameters must be either " +
+                        "astro.Quantities or floats (nd.arrays)"
+                    )
 
             def underintegral(energy):
                 return(
@@ -296,11 +311,26 @@ def inverse_compton_spec(
     elif spec_law == 'power_law':
         par_list = [gamma1, en_ref, en_min, en_max, norm]
         if all(el is not None for el in par_list):
-            ee = en_min.unit * np.logspace(
-                np.log10(en_min.value),
-                np.log10(en_max.to(en_min.unit).value),
-                number_of_integration
-            )
+            try:
+                ee = en_min.unit * np.logspace(
+                    np.log10(en_min.value),
+                    np.log10(en_max.value),
+                    number_of_integration
+                )
+            except AttributeError:
+                try:
+                    ee = en_min * np.logspace(
+                        np.log10(en_min),
+                        np.log10(en_max),
+                        number_of_integration
+                    ) * u.dimensionless_unscaled
+                    en_min = en_min * u.dimensionless_unscaled
+                    en_max = en_max * u.dimensionless_unscaled
+                except AttributeError:
+                    raise AttributeError(
+                        "electron energy parameters must be either " +
+                        "astro.Quantities or floats (nd.arrays)"
+                    )
 
             def underintegral(energy):
                 return(
@@ -341,11 +371,26 @@ def inverse_compton_spec(
     elif spec_law == 'exponential_cutoff':
         par_list = [gamma1, en_cutoff, en_min, en_max, norm, en_ref]
         if all(el is not None for el in par_list):
-            ee = en_min.unit * np.logspace(
-                np.log10(en_min.value),
-                np.log10(en_max.to(en_min.unit).value),
-                number_of_integration
-            )
+            try:
+                ee = en_min.unit * np.logspace(
+                    np.log10(en_min.value),
+                    np.log10(en_max.value),
+                    number_of_integration
+                )
+            except AttributeError:
+                try:
+                    ee = en_min * np.logspace(
+                        np.log10(en_min),
+                        np.log10(en_max),
+                        number_of_integration
+                    ) * u.dimensionless_unscaled
+                    en_min = en_min * u.dimensionless_unscaled
+                    en_max = en_max * u.dimensionless_unscaled
+                except AttributeError:
+                    raise AttributeError(
+                        "electron energy parameters must be either " +
+                        "astro.Quantities or floats (nd.arrays)"
+                    )
 
             def underintegral(energy):
                 return(
