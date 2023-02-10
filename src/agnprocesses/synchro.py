@@ -8,10 +8,11 @@ from astropy.units.core import UnitConversionError
 from astropy import constants as const
 import numpy as np
 from scipy.integrate import simps
-
+from numba import jit
 from . import spectra as spec
 
 
+@jit(nopython=True)
 def derishev_q_function(x):
     """
     This is Derishev's Q_{PL} function
