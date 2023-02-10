@@ -12,6 +12,7 @@ import subprocess  # to run prompt scripts from python
 import warnings
 import agnprocesses.ext.icir
 import agnprocesses.spectra as spec
+from numba import jit
 
 
 def test():
@@ -19,6 +20,7 @@ def test():
     return None
 
 
+@jit(nopython=True)
 def inverse_compton_base(alpha, g, alpha1):
     """
     This is the original Jones formula for Compton (or inverse Compton)
