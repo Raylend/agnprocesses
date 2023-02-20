@@ -1685,6 +1685,7 @@ def monte_carlo_process(
     if synchrotron_losses_flag:
         synchro_spec_array = (synchro_spec_array.detach().to('cpu').numpy()
                               / const.h * 2.0 * np.pi)
+        synchro_nu_array = synchro_nu_array.detach().to('cpu').numpy()
         synchro_table = spec.create_2column_table(
             (synchro_nu_array * const.h * u.Hz).to(u.eV),
             (synchro_spec_array *
