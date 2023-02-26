@@ -11,7 +11,7 @@ git clone https://github.com/Raylend/agnprocesses.git
 cd agnprocesses
 ```
 
-2. If you have not already installed [conda](https://www.anaconda.com/products/individual) or [mamba](https://mamba.readthedocs.io/en/latest/installation.html), please install one of them (or both). The [mamba](https://mamba.readthedocs.io/en/latest/installation.html) package is *strongly* recommended since it is mush faster than [conda](https://www.anaconda.com/products/individual). After the installation has completed, open a new terminal window in the project folder. Create an environment for the project and install dependencies via
+2. If you have not already installed [conda](https://www.anaconda.com/products/individual) or [mamba](https://mamba.readthedocs.io/en/latest/installation.html), please install one of them (or both). The [mamba](https://mamba.readthedocs.io/en/latest/installation.html) package is *strongly* recommended since it is much faster than [conda](https://www.anaconda.com/products/individual). After the installation has completed, open a new terminal window in the project folder. Create an environment for the project and install dependencies via
 
 ```bash
 conda env create -f requirements.dev.yml
@@ -59,7 +59,7 @@ cd ..
 
 ## Development
 
-Uninstall package and clean (almoast) all generated files:
+Uninstall package and clean (almost) all generated files:
 
 ```bash
 make clean
