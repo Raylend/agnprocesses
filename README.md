@@ -1,6 +1,7 @@
 ![tests](https://github.com/Raylend/agnprocesses/actions/workflows/pr.yml/badge.svg)
 
 # `agnprocesses` — AGN processes modelling toolkit
+**This package is still under heavy development and may contain a lot of bugs. The author does not endorse anyone to use it for any scientific calculations without a grain of salt.**
 
 ## Installation (Ubuntu based distribution)
 
